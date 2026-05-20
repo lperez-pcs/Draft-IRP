@@ -40,7 +40,6 @@ data["Categoria"]=data["Riesgo"].apply(categoria)
 with open("panama-provincias.geojson","r",encoding="utf-8") as f:
     panama=json.load(f)
     
-st.write(panama["features"][0]["properties"])
 
 def normalizar(texto):
     texto = str(texto)
@@ -62,15 +61,7 @@ data["map_key"] = data["Provincia"].apply(normalizar)
 for feature in panama["features"]:
 
     props=feature["properties"]
-
-    nombre=(
-        props.get("name")
-        or props.get("NAME_1")
-        or props.get("provincia")
-        or props.get("Provincia")
-        or props.get("NOMBRE")
-        or ""
-    )
+    nombre=props.get("NOMBRE","")
 
     props["map_key"]=normalizar(nombre)
 
