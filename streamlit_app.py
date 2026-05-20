@@ -97,9 +97,17 @@ fig = px.choropleth(
 
 fig.update_geos(
     fitbounds="locations",
-    visible=False
+    visible=False,
+
+    showcountries=False,
+    showcoastlines=False,
+    showframe=False
 )
 
+fig.update_traces(
+    marker_line_color="white",
+    marker_line_width=1
+)
 fig.update_layout(
     height=520,
     paper_bgcolor="white",
