@@ -4,14 +4,14 @@ import plotly.express as px
 import json
 import unicodedata
 
-# Configuración general de la página
+# Configuración general de la app
 st.set_page_config(page_title="Strategic Risk Platform", layout="wide")
 
 st.title("Termómetro Nacional")
 st.subheader("Territorial Risk Monitor")
 st.caption("Pilot version — conceptual prototype with simulated data")
 
-# Datos de prueba del score por provincia
+# Datos simulados: solo provincias con score de riesgo
 data = pd.DataFrame({
     "Provincia": [
         "Bocas del Toro",
@@ -28,7 +28,7 @@ data = pd.DataFrame({
     "Riesgo": [35, 78, 66, 52, 28, 41, 32, 57, 49, 61]
 })
 
-# Clasificación del nivel de riesgo
+# Reglas de clasificación del riesgo
 def categoria(score):
     if score >= 70:
         return "Alto"
@@ -39,11 +39,11 @@ def categoria(score):
 
 data["Categoria"] = data["Riesgo"].apply(categoria)
 
-# Cargamos el mapa GeoJSON
+# Cargar el mapa de Panamá
 with open("panama-provincias.geojson", "r", encoding="utf-8") as f:
     panama = json.load(f)
 
-# Normalizamos nombres para evitar problemas con tildes o diferencias de texto
+# Función para igualar nombres aunque tengan tildes o formatos distintos
 def normalizar(texto):
     texto = str(texto)
     texto = unicodedata.normalize("NFKD", texto)
@@ -56,25 +56,26 @@ def normalizar(texto):
     texto = texto.strip()
     return texto
 
-# Llave limpia para conectar datos con el mapa
+# Llave limpia para conectar tabla con mapa
 data["map_key"] = data["Provincia"].apply(normalizar)
 
-# Llave limpia dentro del GeoJSON
+# Crear la misma llave dentro del GeoJSON
 for feature in panama["features"]:
     props = feature["properties"]
     nombre = props.get("name", "")
     props["map_key"] = normalizar(nombre)
 
-# Capa base gris para territorios sin data, como comarcas
+# Base gris para TODO el mapa: provincias + comarcas
+# Esta capa sirve para que lo que no tiene data quede gris.
 base_map = pd.DataFrame({
     "map_key": [
         feature["properties"]["map_key"]
         for feature in panama["features"]
     ],
-    "Base": ["Sin información"] * len(panama["features"])
+    "Base": ["base"] * len(panama["features"])
 })
 
-# Primero pintamos todo el mapa en gris
+# Primer mapa: capa base gris
 fig = px.choropleth(
     base_map,
     geojson=panama,
@@ -82,7 +83,7 @@ fig = px.choropleth(
     featureidkey="properties.map_key",
     color="Base",
     color_discrete_map={
-        "Sin información": "#D9D9D9"
+        "base": "#D9D9D9"
     },
     hover_data={
         "Base": False,
@@ -90,7 +91,12 @@ fig = px.choropleth(
     }
 )
 
-# Luego pintamos encima solo las provincias con datos
+# Ocultamos la capa gris de la leyenda
+fig.data[0].showlegend = False
+fig.data[0].hoverinfo = "skip"
+fig.data[0].hovertemplate = None
+
+# Segundo mapa: provincias con datos reales/simulados
 fig_data = px.choropleth(
     data,
     geojson=panama,
@@ -113,8 +119,9 @@ fig_data = px.choropleth(
     }
 )
 
-# Agregamos las provincias con data sobre la base gris
+# Agregamos las provincias con data encima de la capa gris
 for trace in fig_data.data:
+    trace.showlegend = True
     fig.add_trace(trace)
 
 # Ajustes visuales del mapa
@@ -126,13 +133,13 @@ fig.update_geos(
     showframe=False
 )
 
-# Bordes blancos para separación tipo Google Trends
+# Bordes blancos entre territorios
 fig.update_traces(
     marker_line_color="white",
-    marker_line_width=1.1
+    marker_line_width=0.9
 )
 
-# Hover más elegante para dar sensación de enfoque
+# Tooltip limpio al pasar el cursor
 fig.update_traces(
     hoverlabel=dict(
         bgcolor="white",
@@ -140,11 +147,6 @@ fig.update_traces(
         font_color="#333333",
         bordercolor="#7A7A7A"
     )
-)
-
-# Plantilla del tooltip al pasar el mouse
-fig.update_traces(
-    hovertemplate="<b>%{hovertext}</b><br>Riesgo: %{customdata[0]}<br>Categoría: %{customdata[1]}<extra></extra>"
 )
 
 fig.update_layout(
@@ -163,7 +165,7 @@ fig.update_layout(
     legend_title_text="Categoría"
 )
 
-# Layout: mapa + ranking
+# Distribución: mapa a la izquierda, ranking a la derecha
 col1, col2 = st.columns([2, 1])
 
 with col1:
