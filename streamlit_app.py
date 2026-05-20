@@ -6,10 +6,83 @@ import unicodedata
 
 st.set_page_config(page_title="Strategic Risk Platform", layout="wide")
 
-st.title("Termómetro Nacional")
-st.subheader("Territorial Risk Monitor")
-st.caption("Pilot version — conceptual prototype with simulated data")
+st.markdown("""
+<style>
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #061B33 0%, #082847 100%);
+}
+[data-testid="stSidebar"] * {
+    color: white !important;
+}
+.main-card {
+    background: white;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+    border: 1px solid #EEF0F4;
+}
+.kpi-card {
+    background: white;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+    border: 1px solid #EEF0F4;
+    min-height: 120px;
+}
+.kpi-number {
+    font-size: 38px;
+    font-weight: 800;
+    margin: 0;
+}
+.kpi-label {
+    font-size: 15px;
+    color: #334155;
+}
+.badge-alto {
+    background:#F7B6C2;
+    color:#7A1225;
+    padding:5px 14px;
+    border-radius:20px;
+}
+.badge-medio {
+    background:#FFDFA8;
+    color:#7A4A00;
+    padding:5px 14px;
+    border-radius:20px;
+}
+.badge-bajo {
+    background:#BFE6C4;
+    color:#145A24;
+    padding:5px 14px;
+    border-radius:20px;
+}
+</style>
+""", unsafe_allow_html=True)
 
+# Sidebar
+st.sidebar.markdown("## SRP")
+st.sidebar.markdown("### Strategic Risk Platform")
+st.sidebar.markdown("---")
+st.sidebar.markdown("🏠 **Dashboard**")
+st.sidebar.markdown("🗺️ Mapa")
+st.sidebar.markdown("📊 Ranking")
+st.sidebar.markdown("📄 Reportes")
+st.sidebar.markdown("🔔 Alertas")
+st.sidebar.markdown("⚙️ Configuración")
+
+# Header
+col_title, col_date = st.columns([3, 1])
+
+with col_title:
+    st.title("Termómetro Nacional")
+    st.subheader("Territorial Risk Monitor")
+    st.caption("Pilot version — conceptual prototype with simulated data")
+
+with col_date:
+    st.markdown("**Actualizado:** 27 mayo 2025")
+    vista = st.selectbox("Ver por:", ["Provincias"], label_visibility="collapsed")
+
+# Data
 data = pd.DataFrame({
     "Provincia": [
         "Bocas del Toro", "Coclé", "Colón", "Chiriquí", "Darién",
@@ -28,6 +101,53 @@ def categoria(score):
 
 data["Categoria"] = data["Riesgo"].apply(categoria)
 
+# KPIs
+alto = (data["Categoria"] == "Alto").sum()
+medio = (data["Categoria"] == "Medio").sum()
+bajo = (data["Categoria"] == "Bajo").sum()
+total = len(data)
+
+k1, k2, k3, k4 = st.columns(4)
+
+with k1:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">🛡️ Riesgo alto</div>
+        <p class="kpi-number">{alto}</p>
+        <div>provincias</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with k2:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">📈 Riesgo medio</div>
+        <p class="kpi-number">{medio}</p>
+        <div>provincias</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with k3:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">✅ Riesgo bajo</div>
+        <p class="kpi-number">{bajo}</p>
+        <div>provincias</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with k4:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">🏛️ Total provincias</div>
+        <p class="kpi-number">{total}</p>
+        <div>provincias</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# GeoJSON
 with open("panama-provincias.geojson", "r", encoding="utf-8") as f:
     panama = json.load(f)
 
@@ -47,14 +167,9 @@ for feature in panama["features"]:
     nombre = props.get("NOMBRE", "")
     props["map_key"] = normalizar(nombre)
 
-# Base gris: pinta todo el mapa primero.
-# Como no se usa una categoría llamada "Sin data", no aparece en la leyenda.
+# Base gris para comarcas / territorios sin data
 base = pd.DataFrame({
-    "map_key": [
-        feature["properties"]["map_key"]
-        for feature in panama["features"]
-    ],
-    "color_base": ["#D9D9D9"] * len(panama["features"])
+    "map_key": [feature["properties"]["map_key"] for feature in panama["features"]]
 })
 
 fig = px.choropleth(
@@ -75,9 +190,7 @@ fig_data = px.choropleth(
     locations="map_key",
     featureidkey="properties.map_key",
     color="Categoria",
-    category_orders={
-        "Categoria": ["Alto", "Medio", "Bajo"]
-    },
+    category_orders={"Categoria": ["Alto", "Medio", "Bajo"]},
     color_discrete_map={
         "Alto": "#D94B67",
         "Medio": "#F2A93B",
@@ -104,43 +217,47 @@ fig.update_geos(
 
 fig.update_traces(
     marker_line_color="white",
-    marker_line_width=0.8
-)
-
-fig.update_traces(
-    hoverlabel=dict(
-        bgcolor="white",
-        font_size=14,
-        font_color="#222222",
-        bordercolor="#777777"
-    )
+    marker_line_width=0.9
 )
 
 fig.update_layout(
     height=520,
     paper_bgcolor="white",
     plot_bgcolor="white",
-    margin={
-        "r": 0,
-        "t": 0,
-        "l": 0,
-        "b": 0
-    },
+    margin={"r": 0, "t": 0, "l": 0, "b": 0},
     legend_title_text="Categoría"
 )
 
-col1, col2 = st.columns([2, 1])
+# Main layout
+map_col, rank_col = st.columns([1.55, 1])
 
-with col1:
+with map_col:
+    st.markdown('<div class="main-card">', unsafe_allow_html=True)
+    st.markdown("### Mapa de riesgo territorial")
     st.plotly_chart(fig, use_container_width=True)
+    st.caption("ⓘ Los colores representan el nivel de riesgo territorial por provincia.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-with col2:
-    st.subheader("Ranking territorial")
+with rank_col:
+    st.markdown('<div class="main-card">', unsafe_allow_html=True)
+    st.markdown("### Ranking territorial")
 
-    ranking = data.sort_values("Riesgo", ascending=False)
+    ranking = data.sort_values("Riesgo", ascending=False).copy()
 
-    st.dataframe(
-        ranking[["Provincia", "Riesgo", "Categoria"]],
-        hide_index=True,
-        use_container_width=True
+    def badge(cat):
+        if cat == "Alto":
+            return '<span class="badge-alto">Alto</span>'
+        elif cat == "Medio":
+            return '<span class="badge-medio">Medio</span>'
+        else:
+            return '<span class="badge-bajo">Bajo</span>'
+
+    ranking["Categoría"] = ranking["Categoria"].apply(badge)
+
+    html = ranking[["Provincia", "Riesgo", "Categoría"]].to_html(
+        escape=False,
+        index=False
     )
+
+    st.markdown(html, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
