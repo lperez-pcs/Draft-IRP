@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import json
+import unicodedata 
 
 st.set_page_config(page_title="Strategic Risk Platform", layout="wide")
 
@@ -39,32 +40,77 @@ data["Categoria"]=data["Riesgo"].apply(categoria)
 with open("panama-provincias.geojson","r",encoding="utf-8") as f:
     panama=json.load(f)
 
-fig=px.choropleth_mapbox(
+def normalizar(texto):
+    texto = str(texto)
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(
+        c for c in texto
+        if not unicodedata.combining(c)
+    )
+    texto = texto.lower()
+    texto = texto.replace("provincia de ","")
+    texto = texto.strip()
+
+    return texto
+
+
+data["map_key"] = data["Provincia"].apply(normalizar)
+
+
+for feature in panama["features"]:
+
+    props=feature["properties"]
+
+    nombre=(
+        props.get("name")
+        or props.get("NAME_1")
+        or props.get("provincia")
+        or props.get("Provincia")
+        or props.get("NOMBRE")
+        or ""
+    )
+
+    props["map_key"]=normalizar(nombre)
+
+
+fig = px.choropleth(
     data,
     geojson=panama,
-    locations="Provincia",
-    featureidkey="properties.name",
+    locations="map_key",
+    featureidkey="properties.map_key",
     color="Categoria",
 
     color_discrete_map={
-        "Bajo":"#2ECC71",
-        "Medio":"#F1C40F",
-        "Alto":"#E74C3C"
+        "Bajo":"#BFD7FF",
+        "Medio":"#5B8DEF",
+        "Alto":"#0B4FC3"
     },
 
     hover_name="Provincia",
 
     hover_data={
-        "Riesgo":True
-    },
+        "Riesgo":True,
+        "Categoria":True,
+        "map_key":False
+    }
+)
 
-    center={"lat":8.5,"lon":-80},
-    zoom=6,
-    opacity=.75
+fig.update_geos(
+    fitbounds="locations",
+    visible=False
 )
 
 fig.update_layout(
-    mapbox_style="open-street-map"
+    height=520,
+    paper_bgcolor="white",
+    plot_bgcolor="white",
+
+    margin={
+        "r":0,
+        "t":0,
+        "l":0,
+        "b":0
+    }
 )
 
 col1,col2=st.columns([2,1])
