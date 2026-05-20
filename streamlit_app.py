@@ -81,9 +81,9 @@ fig = px.choropleth(
     color="Categoria",
 
     color_discrete_map={
-        "Bajo":"#6DBB2D",
-        "Medio":"#F5B82E",
-        "Alto":"#FF1E1E"
+        "Bajo":"#74C476",
+        "Medio":"#F2A93B",
+        "Alto":"#D94B67"
     },
 
     hover_name="Provincia",
