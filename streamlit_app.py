@@ -39,6 +39,8 @@ data["Categoria"]=data["Riesgo"].apply(categoria)
 
 with open("panama-provincias.geojson","r",encoding="utf-8") as f:
     panama=json.load(f)
+    
+st.write(panama["features"][0]["properties"])
 
 def normalizar(texto):
     texto = str(texto)
