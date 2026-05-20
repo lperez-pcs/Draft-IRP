@@ -73,10 +73,15 @@ fig = px.choropleth(
     featureidkey="properties.map_key",
     color="Categoria",
 
+    category_orders={
+        "Categoria":["Alto","Medio","Bajo","Sin data"]
+    },
+
     color_discrete_map={
-        "Bajo":"#74C476",
+        "Alto":"#D94B67",
         "Medio":"#F2A93B",
-        "Alto":"#D94B67"
+        "Bajo":"#74C476",
+        "Sin data":"#D9D9D9"
     },
 
     hover_name="Provincia",
@@ -87,6 +92,17 @@ fig = px.choropleth(
         "map_key":False
     }
 )
+sin_data = pd.DataFrame({
+    "Provincia":[
+        "Guna Yala",
+        "Emberá",
+        "Ngöbe Buglé"
+    ],
+    "Riesgo":[None, None, None],
+    "Categoria":["Sin data", "Sin data", "Sin data"]
+})
+
+data = pd.concat([data, sin_data], ignore_index=True)
 
 fig.update_geos(
     fitbounds="locations",
