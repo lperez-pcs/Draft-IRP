@@ -5,7 +5,7 @@ import json
 
 st.set_page_config(page_title="Strategic Risk Platform", layout="wide")
 
-st.title("Strategic Risk Intelligence Platform")
+st.title("Termómetro Nacional")
 st.subheader("Territorial Risk Monitor")
 st.caption("Pilot version — conceptual prototype with simulated data")
 
@@ -36,7 +36,7 @@ def categoria(score):
 
 data["Categoria"]=data["Riesgo"].apply(categoria)
 
-with open("panama.geojson","r",encoding="utf-8") as f:
+with open("panama-provincias.geojson","r",encoding="utf-8") as f:
     panama=json.load(f)
 
 fig=px.choropleth_mapbox(
