@@ -27,18 +27,18 @@ data = pd.DataFrame({
 })
 
 def categoria(score):
-    if score>=70:
+    if score >= 70:
         return "Alto"
-    elif score>=40:
+    elif score >= 40:
         return "Medio"
     else:
         return "Bajo"
 
-data["Categoria"]=data["Riesgo"].apply(categoria)
+data["Categoria"] = data["Riesgo"].apply(categoria)
 
-with open("panama-provincias.geojson","r",encoding="utf-8") as f:
-    panama=json.load(f)
-    
+with open("panama-provincias.geojson", "r", encoding="utf-8") as f:
+    panama = json.load(f)
+
 def normalizar(texto):
     texto = str(texto)
     texto = unicodedata.normalize("NFKD", texto)
@@ -47,16 +47,16 @@ def normalizar(texto):
         if not unicodedata.combining(c)
     )
     texto = texto.lower()
-    texto = texto.replace("provincia de ","")
+    texto = texto.replace("provincia de ", "")
     texto = texto.strip()
     return texto
 
 data["map_key"] = data["Provincia"].apply(normalizar)
 
 for feature in panama["features"]:
-    props=feature["properties"]
-    nombre=props.get("name","")
-    props["map_key"]=normalizar(nombre)
+    props = feature["properties"]
+    nombre = props.get("NOMBRE", "")
+    props["map_key"] = normalizar(nombre)
 
 fig = px.choropleth(
     data,
@@ -64,19 +64,15 @@ fig = px.choropleth(
     locations="map_key",
     featureidkey="properties.map_key",
     color="Categoria",
-
     category_orders={
         "Categoria":["Alto","Medio","Bajo"]
     },
-
     color_discrete_map={
         "Alto":"#D94B67",
         "Medio":"#F2A93B",
         "Bajo":"#74C476"
     },
-
     hover_name="Provincia",
-
     hover_data={
         "Riesgo":True,
         "Categoria":True,
@@ -110,26 +106,18 @@ fig.update_layout(
     legend_title_text="Categoría"
 )
 
-col1,col2=st.columns([2,1])
+col1, col2 = st.columns([2,1])
 
 with col1:
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+    st.plotly_chart(fig, use_container_width=True)
 
 with col2:
     st.subheader("Ranking territorial")
 
-    ranking=data.sort_values(
-        "Riesgo",
-        ascending=False
-    )
+    ranking = data.sort_values("Riesgo", ascending=False)
 
     st.dataframe(
-        ranking[
-            ["Provincia","Riesgo","Categoria"]
-        ],
+        ranking[["Provincia","Riesgo","Categoria"]],
         hide_index=True,
         use_container_width=True
     )
