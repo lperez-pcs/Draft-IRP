@@ -235,7 +235,7 @@ with map_col:
     st.markdown('<div class="main-card">', unsafe_allow_html=True)
     st.markdown("### Mapa de riesgo territorial")
     st.plotly_chart(fig, use_container_width=True)
-    st.caption("ⓘ Los colores representan el nivel de riesgo territorial por provincia.")
+    st.caption("ⓘ Los colores representan el índice de riesgo país por provincia.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 with rank_col:
