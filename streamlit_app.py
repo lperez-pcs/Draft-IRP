@@ -81,9 +81,9 @@ fig = px.choropleth(
     color="Categoria",
 
     color_discrete_map={
-        "Bajo":"#BFD7FF",
-        "Medio":"#5B8DEF",
-        "Alto":"#0B4FC3"
+        "Bajo":"#6DBB2D",
+        "Medio":"#F5B82E",
+        "Alto":"#FF1E1E"
     },
 
     hover_name="Provincia",
@@ -106,7 +106,7 @@ fig.update_geos(
 
 fig.update_traces(
     marker_line_color="white",
-    marker_line_width=1
+    marker_line_width=0.5
 )
 fig.update_layout(
     height=520,
