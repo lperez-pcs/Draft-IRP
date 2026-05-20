@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import urllib.request
 import json
 
 st.set_page_config(page_title="Strategic Risk Platform", layout="wide")
@@ -37,10 +36,8 @@ def categoria(score):
 
 data["Categoria"]=data["Riesgo"].apply(categoria)
 
-url="https://raw.githubusercontent.com/codeforpanama/panama-maps/master/geojson/provincias.geojson"
-
-with urllib.request.urlopen(url) as response:
-    panama=json.load(response)
+with open("panama.geojson","r",encoding="utf-8") as f:
+    panama=json.load(f)
 
 fig=px.choropleth_mapbox(
     data,
