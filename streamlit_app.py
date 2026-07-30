@@ -12,7 +12,8 @@ import streamlit as st
 
 st.set_page_config(
     page_title="Strategic Risk Platform",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
 
@@ -34,86 +35,128 @@ st.markdown(
         gap: 0.55rem;
     }
 
+    .title-section {
+        margin-bottom: 2rem;
+        border-bottom: 2px solid #E8E8E8;
+        padding-bottom: 1.5rem;
+    }
+
     .kpi-card {
         background: white;
-        border-radius: 16px;
-        padding: 18px 20px;
-        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.07);
-        border: 1px solid #E9EDF2;
-        min-height: 115px;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        border: 1px solid #F0F0F0;
+        min-height: 110px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
     .kpi-label {
-        font-size: 14px;
-        color: #475569;
-        margin-bottom: 4px;
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 8px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
     .kpi-number {
-        font-size: 34px;
-        font-weight: 800;
-        color: #0F172A;
+        font-size: 36px;
+        font-weight: 700;
+        color: #1A1A1A;
         margin: 0;
-        line-height: 1.1;
+        line-height: 1;
     }
 
     .kpi-unit {
-        font-size: 13px;
-        color: #64748B;
-        margin-top: 5px;
+        font-size: 12px;
+        color: #999;
+        margin-top: 6px;
     }
 
     .badge-alto {
-        background: #E7B1B7;
-        color: #771824;
-        padding: 5px 13px;
+        background: #D32F2F;
+        color: white;
+        padding: 6px 14px;
         border-radius: 20px;
         display: inline-block;
-        min-width: 62px;
+        font-size: 12px;
+        font-weight: 600;
         text-align: center;
     }
 
     .badge-medio {
-        background: #F3D8DB;
-        color: #9A3E47;
-        padding: 5px 13px;
+        background: #E74C3C;
+        color: white;
+        padding: 6px 14px;
         border-radius: 20px;
         display: inline-block;
-        min-width: 62px;
+        font-size: 12px;
+        font-weight: 600;
         text-align: center;
     }
 
     .badge-bajo {
-        background: #FAECEE;
-        color: #A45D64;
-        padding: 5px 13px;
+        background: #FADBD8;
+        color: #8B4513;
+        padding: 6px 14px;
         border-radius: 20px;
         display: inline-block;
-        min-width: 62px;
+        font-size: 12px;
+        font-weight: 600;
         text-align: center;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1A1A1A;
+        margin-bottom: 1rem;
+        margin-top: 0;
+    }
+
+    .container-box {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        border: 1px solid #F0F0F0;
     }
 
     table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 14px;
+        font-size: 13px;
     }
 
     th {
-        background: #F7F8FA;
-        color: #334155;
-        padding: 10px;
+        background: #FAFAFA;
+        color: #666;
+        padding: 12px 10px;
         text-align: left;
-        border: 1px solid #E5E7EB;
+        border-bottom: 2px solid #E8E8E8;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.5px;
     }
 
     td {
-        padding: 9px 10px;
-        border: 1px solid #E5E7EB;
+        padding: 10px;
+        border-bottom: 1px solid #F0F0F0;
     }
 
     tbody tr:hover {
         background: #FAFAFA;
+    }
+
+    .info-caption {
+        font-size: 12px;
+        color: #999;
+        margin-top: 1rem;
+        line-height: 1.5;
     }
 
     </style>
@@ -126,17 +169,13 @@ st.markdown(
 # ENCABEZADO
 # ============================================================
 
-col_title, col_update = st.columns([4, 1])
-
-with col_title:
-    st.title("Termómetro Nacional")
-    st.subheader("Territorial Risk Monitor")
-    st.caption(
-        "Pilot version — conceptual prototype with simulated data"
-    )
-
-with col_update:
-    st.markdown("**Actualizado:** mayo 2025")
+st.markdown("""
+<div class="title-section">
+    <h1 style="margin: 0 0 0.5rem 0; font-size: 32px;">Termómetro Nacional</h1>
+    <p style="margin: 0; font-size: 16px; color: #666;">Territorial Risk Monitor — Panama</p>
+    <p style="margin: 0.5rem 0 0 0; font-size: 12px; color: #999;">Pilot version with simulated data · Updated May 2025</p>
+</div>
+""", unsafe_allow_html=True)
 
 
 # ============================================================
@@ -172,20 +211,20 @@ data = pd.DataFrame({
     ],
     "Desempleo": [
         100,
+        93,
         100,
+        54,
         100,
-        74,
-        100,
-        100,
-        70,
-        55,
-        74,
-        95,
-        48
+        69,
+        33,
+        48,
+        56,
+        66,
+        15
     ]
 })
 
-indice_nacional_desempleo = 85
+indice_nacional_desempleo = 65
 indice_nacional_miseria = 65
 
 
@@ -206,20 +245,16 @@ data["Categoria"] = data["Desempleo"].apply(categoria)
 
 
 # ============================================================
-# KPI
+# KPI DASHBOARD
 # ============================================================
 
-alto = int((data["Categoria"] == "Alto").sum())
-medio = int((data["Categoria"] == "Medio").sum())
-bajo = int((data["Categoria"] == "Bajo").sum())
-
-k1, k2, k3, k4 = st.columns(4)
+k1, k2, k3, k4 = st.columns(4, gap="medium")
 
 with k1:
     st.markdown(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Índice nacional</div>
+            <div class="kpi-label">Índice Nacional</div>
             <p class="kpi-number">{indice_nacional_desempleo}</p>
             <div class="kpi-unit">desempleo normalizado</div>
         </div>
@@ -228,44 +263,49 @@ with k1:
     )
 
 with k2:
+    alto = int((data["Categoria"] == "Alto").sum())
     st.markdown(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Riesgo alto</div>
+            <div class="kpi-label">Riesgo Alto</div>
             <p class="kpi-number">{alto}</p>
-            <div class="kpi-unit">territorios</div>
+            <div class="kpi-unit">provincias/comarcas</div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
 with k3:
+    medio = int((data["Categoria"] == "Medio").sum())
     st.markdown(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Riesgo medio</div>
+            <div class="kpi-label">Riesgo Medio</div>
             <p class="kpi-number">{medio}</p>
-            <div class="kpi-unit">territorios</div>
+            <div class="kpi-unit">provincias/comarcas</div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
 with k4:
+    bajo = int((data["Categoria"] == "Bajo").sum())
     st.markdown(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Riesgo bajo</div>
+            <div class="kpi-label">Riesgo Bajo</div>
             <p class="kpi-number">{bajo}</p>
-            <div class="kpi-unit">territorios</div>
+            <div class="kpi-unit">provincias/comarcas</div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
+st.markdown("")
+
 
 # ============================================================
-# GEOJSON
+# GEOJSON LOAD
 # ============================================================
 
 with open(
@@ -278,23 +318,16 @@ with open(
 
 def normalizar(texto):
     texto = str(texto)
-
-    texto = unicodedata.normalize(
-        "NFKD",
-        texto
-    )
-
+    texto = unicodedata.normalize("NFKD", texto)
     texto = "".join(
         caracter
         for caracter in texto
         if not unicodedata.combining(caracter)
     )
-
     texto = texto.lower()
     texto = texto.replace("provincia de ", "")
     texto = texto.replace("comarca ", "")
     texto = texto.strip()
-
     return texto
 
 
@@ -307,31 +340,7 @@ for feature in panama["features"]:
 
 
 # ============================================================
-# CAPA BASE GRIS
-# ============================================================
-
-base = pd.DataFrame({
-    "map_key": [
-        feature["properties"]["map_key"]
-        for feature in panama["features"]
-    ]
-})
-
-fig = px.choropleth(
-    base,
-    geojson=panama,
-    locations="map_key",
-    featureidkey="properties.map_key",
-    color_discrete_sequence=["#D9D9D9"]
-)
-
-fig.data[0].showlegend = False
-fig.data[0].hoverinfo = "skip"
-fig.data[0].hovertemplate = None
-
-
-# ============================================================
-# CAPA DE DESEMPLEO
+# MAPA CHOROPLETH
 # ============================================================
 
 fig_data = px.choropleth(
@@ -340,39 +349,23 @@ fig_data = px.choropleth(
     locations="map_key",
     featureidkey="properties.map_key",
     color="Categoria",
-
     category_orders={
-        "Categoria": [
-            "Alto",
-            "Medio",
-            "Bajo"
-        ]
+        "Categoria": ["Alto", "Medio", "Bajo"]
     },
-
     color_discrete_map={
-        "Alto": "#8F1724",
-        "Medio": "#C95F69",
-        "Bajo": "#EEC4C8"
+        "Alto": "#D32F2F",
+        "Medio": "#E74C3C",
+        "Bajo": "#FADBD8"
     },
-
     hover_name="Territorio",
-
     hover_data={
-        "Desempleo": True,
+        "Desempleo": ":.0f",
         "Categoria": True,
         "map_key": False
     }
 )
 
-for trace in fig_data.data:
-    fig.add_trace(trace)
-
-
-# ============================================================
-# FORMATO DEL MAPA
-# ============================================================
-
-fig.update_geos(
+fig_data.update_geos(
     fitbounds="locations",
     visible=False,
     showcountries=False,
@@ -380,157 +373,112 @@ fig.update_geos(
     showframe=False
 )
 
-fig.update_traces(
+fig_data.update_traces(
     marker_line_color="white",
-    marker_line_width=0.9
+    marker_line_width=1.2,
+    hovertemplate="<b>%{customdata[1]}</b><br>Desempleo: %{customdata[0]:.0f}<br>Nivel: %{customdata[2]}<extra></extra>"
 )
 
-fig.update_layout(
-    height=500,
+fig_data.update_layout(
+    height=550,
     paper_bgcolor="white",
     plot_bgcolor="white",
-
-    margin={
-        "r": 0,
-        "t": 0,
-        "l": 0,
-        "b": 0
-    },
-
-    legend_title_text="Nivel de riesgo",
-
+    margin={"r": 0, "t": 20, "l": 0, "b": 0},
+    legend_title_text="Nivel de Riesgo",
     legend={
         "orientation": "v",
         "yanchor": "top",
-        "y": 1,
+        "y": 0.99,
         "xanchor": "right",
-        "x": 1
+        "x": 0.99,
+        "bgcolor": "rgba(255, 255, 255, 0.95)",
+        "bordercolor": "#E8E8E8",
+        "borderwidth": 1
     }
 )
 
 
 # ============================================================
-# MAPA Y RANKING
+# SECCIÓN: MAPA Y RANKING
 # ============================================================
 
-map_col, rank_col = st.columns([1.6, 1])
+map_col, rank_col = st.columns([2, 1], gap="medium")
 
 with map_col:
-    with st.container(border=True):
-        st.markdown("### Mapa de desempleo normalizado")
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-        st.caption(
-            "Los tonos más oscuros representan mayores niveles "
-            "de desempleo normalizado."
-        )
+    st.markdown('<h3 class="section-title">Mapa de Desempleo Normalizado</h3>', unsafe_allow_html=True)
+    st.plotly_chart(fig_data, use_container_width=True)
+    st.markdown(
+        '<p class="info-caption">Los tonos más intensos representan mayores niveles de desempleo normalizado. Escala: Rojo claro (Bajo) → Rojo coral (Medio) → Rojo intenso (Alto).</p>',
+        unsafe_allow_html=True
+    )
 
 with rank_col:
-    with st.container(border=True):
-        st.markdown("### Ranking territorial")
-
-        ranking = data.sort_values(
-            "Desempleo",
-            ascending=False
-        ).copy()
-
-        def badge(cat):
-            if cat == "Alto":
-                return (
-                    '<span class="badge-alto">'
-                    'Alto'
-                    '</span>'
-                )
-
-            elif cat == "Medio":
-                return (
-                    '<span class="badge-medio">'
-                    'Medio'
-                    '</span>'
-                )
-
-            return (
-                '<span class="badge-bajo">'
-                'Bajo'
-                '</span>'
-            )
-
-        ranking["Nivel"] = ranking["Categoria"].apply(badge)
-
-        ranking_html = ranking[
-            [
-                "Territorio",
-                "Desempleo",
-                "Nivel"
-            ]
-        ].to_html(
-            escape=False,
-            index=False
-        )
-
-        st.markdown(
-            ranking_html,
-            unsafe_allow_html=True
-        )
+    st.markdown('<h3 class="section-title">Ranking Territorial</h3>', unsafe_allow_html=True)
+    
+    ranking = data.sort_values("Desempleo", ascending=False).copy()
+    
+    def badge(cat):
+        if cat == "Alto":
+            return '<span class="badge-alto">Alto</span>'
+        elif cat == "Medio":
+            return '<span class="badge-medio">Medio</span>'
+        return '<span class="badge-bajo">Bajo</span>'
+    
+    ranking["Nivel"] = ranking["Categoria"].apply(badge)
+    
+    ranking_html = ranking[["Territorio", "Desempleo", "Nivel"]].to_html(
+        escape=False,
+        index=False,
+        col_space={"Territorio": "60%", "Desempleo": "20%", "Nivel": "20%"}
+    )
+    
+    st.markdown(
+        f'<div class="container-box">{ranking_html}</div>',
+        unsafe_allow_html=True
+    )
 
 
 # ============================================================
-# ÍNDICE DE MISERIA
+# SECCIÓN: ÍNDICE DE MISERIA
 # ============================================================
 
-st.markdown("## Índice de Miseria")
+st.markdown("")
+st.markdown('<h2 style="font-size: 24px; font-weight: 700; margin-top: 2rem;">Índice de Miseria</h2>', unsafe_allow_html=True)
 
-col_miseria, col_referencia = st.columns([2.2, 1])
+col_miseria, col_referencia = st.columns([2.2, 1], gap="medium")
 
 with col_miseria:
-    with st.container(border=True):
-        st.markdown("### Resultado territorial")
-
-        tabla_miseria = data[
-            [
-                "Territorio",
-                "Indice de Miseria"
-            ]
-        ].sort_values(
-            "Indice de Miseria",
-            ascending=False
-        )
-
-        st.dataframe(
-            tabla_miseria,
-            hide_index=True,
-            use_container_width=True,
-            column_config={
-                "Territorio": "Territorio",
-                "Indice de Miseria":
-                    st.column_config.NumberColumn(
-                        "Índice de Miseria",
-                        format="%d"
-                    )
-            }
-        )
+    st.markdown('<h3 class="section-title">Resultado Territorial</h3>', unsafe_allow_html=True)
+    
+    tabla_miseria = data[["Territorio", "Indice de Miseria"]].sort_values(
+        "Indice de Miseria",
+        ascending=False
+    )
+    
+    tabla_html = tabla_miseria.to_html(
+        escape=False,
+        index=False
+    )
+    
+    st.markdown(
+        f'<div class="container-box">{tabla_html}</div>',
+        unsafe_allow_html=True
+    )
 
 with col_referencia:
-    with st.container(border=True):
-        st.markdown("### Referencia nacional")
-
-        referencia = pd.DataFrame({
-            "Indicador": [
-                "Índice de Miseria",
-                "Desempleo"
-            ],
-            "Valor nacional": [
-                indice_nacional_miseria,
-                indice_nacional_desempleo
-            ]
-        })
-
-        st.dataframe(
-            referencia,
-            hide_index=True,
-            use_container_width=True
-        )
+    st.markdown('<h3 class="section-title">Referencia Nacional</h3>', unsafe_allow_html=True)
+    
+    referencia = pd.DataFrame({
+        "Indicador": ["Índice de Miseria", "Desempleo"],
+        "Valor Nacional": [indice_nacional_miseria, indice_nacional_desempleo]
+    })
+    
+    ref_html = referencia.to_html(
+        escape=False,
+        index=False
+    )
+    
+    st.markdown(
+        f'<div class="container-box">{ref_html}</div>',
+        unsafe_allow_html=True
+    )
