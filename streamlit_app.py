@@ -335,7 +335,7 @@ data["map_key"] = data["Territorio"].apply(normalizar)
 
 for feature in panama["features"]:
     propiedades = feature["properties"]
-    nombre = propiedades.get("NOMBRE", "")
+    nombre = propiedades.get("Provincia", "")
     propiedades["map_key"] = normalizar(nombre)
 
 
