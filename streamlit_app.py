@@ -342,7 +342,14 @@ for feature in panama["features"]:
 # ============================================================
 # MAPA CHOROPLETH
 # ============================================================
+# Mantener en el GeoJSON únicamente los territorios presentes en los datos
+territorios_validos = set(data["map_key"])
 
+panama["features"] = [
+    feature
+    for feature in panama["features"]
+    if feature["properties"]["map_key"] in territorios_validos
+]
 fig_data = px.choropleth(
     data,
     geojson=panama,
