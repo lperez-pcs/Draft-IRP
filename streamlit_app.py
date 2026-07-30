@@ -224,7 +224,7 @@ data = pd.DataFrame({
     ]
 })
 
-indice_nacional_desempleo = 65
+indice_nacional_desempleo = 85
 indice_nacional_miseria = 65
 
 
@@ -405,7 +405,7 @@ fig_data.update_layout(
 map_col, rank_col = st.columns([2, 1], gap="medium")
 
 with map_col:
-    st.markdown('<h3 class="section-title">Mapa de Desempleo Normalizado</h3>', unsafe_allow_html=True)
+    st.markdown('<h3 class="section-title">Mapa </h3>', unsafe_allow_html=True)
     st.plotly_chart(fig_data, use_container_width=True)
     st.markdown(
         '<p class="info-caption">Los tonos más intensos representan mayores niveles de desempleo normalizado. Escala: Rojo claro (Bajo) → Rojo coral (Medio) → Rojo intenso (Alto).</p>',
