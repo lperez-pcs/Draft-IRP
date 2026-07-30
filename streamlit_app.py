@@ -4,7 +4,8 @@ import unicodedata
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-
+from shapely.geometry import shape, mapping
+from shapely.geometry.polygon import orient
 
 # ============================================================
 # CONFIGURACIÓN GENERAL
@@ -308,13 +309,26 @@ st.markdown("")
 # GEOJSON LOAD
 # ============================================================
 
+
 with open(
     "panama-provincias.geojson",
     "r",
     encoding="utf-8"
 ) as f:
     panama = json.load(f)
+    
+for feature in panama["features"]:
+    geom = shape(feature["geometry"])
 
+    if geom.geom_type == "Polygon":
+        geom = orient(geom, sign=1.0)
+
+    elif geom.geom_type == "MultiPolygon":
+        geom = type(geom)(
+            [orient(poly, sign=1.0) for poly in geom.geoms]
+        )
+
+    feature["geometry"] = mapping(geom)
 
 def normalizar(texto):
     texto = str(texto)
