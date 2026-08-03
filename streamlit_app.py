@@ -3,6 +3,7 @@ import unicodedata
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 
@@ -169,13 +170,22 @@ st.markdown(
 # ENCABEZADO
 # ============================================================
 
-st.markdown("""
-<div class="title-section">
-    <h1 style="margin: 0 0 0.5rem 0; font-size: 32px;">Termómetro Nacional</h1>
-    <p style="margin: 0; font-size: 16px; color: #666;">Territorial Risk Monitor — Panama</p>
-    <p style="margin: 0.5rem 0 0 0; font-size: 12px; color: #999;">Pilot version with simulated data · Updated May 2025</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="title-section">
+        <h1 style="margin: 0 0 0.5rem 0; font-size: 32px;">
+            Termómetro Nacional
+        </h1>
+        <p style="margin: 0; font-size: 16px; color: #666;">
+            Territorial Risk Monitor — Panamá
+        </p>
+        <p style="margin: 0.5rem 0 0 0; font-size: 12px; color: #999;">
+            Perfilamiento territorial · Hard No
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # ============================================================
@@ -196,36 +206,48 @@ data = pd.DataFrame({
         "Darién",
         "Ngäbe Buglé"
     ],
-    "Indice de Miseria": [
-        100,
-        93,
-        100,
-        54,
-        100,
-        69,
-        33,
-        48,
-        56,
-        66,
-        15
+    "Hard No": [
+        46,
+        39,
+        42,
+        43,
+        37,
+        22,
+        18,
+        26,
+        32,
+        25,
+        45
     ],
-    "Desempleo": [
-        100,
-        93,
-        100,
-        54,
-        100,
-        69,
-        33,
-        48,
-        56,
-        66,
-        15
+    "Latitud": [
+        9.34,
+        8.43,
+        8.10,
+        7.96,
+        7.77,
+        8.52,
+        9.35,
+        8.88,
+        8.98,
+        8.42,
+        8.75
+    ],
+    "Longitud": [
+        -82.24,
+        -82.43,
+        -80.98,
+        -80.43,
+        -80.28,
+        -80.36,
+        -79.90,
+        -79.78,
+        -79.52,
+        -78.15,
+        -81.75
     ]
 })
 
-indice_nacional_desempleo = 85
-indice_nacional_miseria = 65
+hard_no_nacional = 32
 
 
 # ============================================================
@@ -233,15 +255,15 @@ indice_nacional_miseria = 65
 # ============================================================
 
 def categoria(score):
-    if score >= 70:
+    if score >= 40:
         return "Alto"
-    elif score >= 40:
+    elif score >= 25:
         return "Medio"
     else:
         return "Bajo"
 
 
-data["Categoria"] = data["Desempleo"].apply(categoria)
+data["Categoria"] = data["Hard No"].apply(categoria)
 
 
 # ============================================================
@@ -254,9 +276,9 @@ with k1:
     st.markdown(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Índice Nacional</div>
-            <p class="kpi-number">{indice_nacional_desempleo}</p>
-            <div class="kpi-unit">desempleo normalizado</div>
+            <div class="kpi-label">Hard No Nacional</div>
+            <p class="kpi-number">{hard_no_nacional}%</p>
+            <div class="kpi-unit">porcentaje nacional</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -264,12 +286,13 @@ with k1:
 
 with k2:
     alto = int((data["Categoria"] == "Alto").sum())
+
     st.markdown(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Riesgo Alto</div>
+            <div class="kpi-label">Nivel Alto</div>
             <p class="kpi-number">{alto}</p>
-            <div class="kpi-unit">provincias/comarcas</div>
+            <div class="kpi-unit">territorios</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -277,12 +300,13 @@ with k2:
 
 with k3:
     medio = int((data["Categoria"] == "Medio").sum())
+
     st.markdown(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Riesgo Medio</div>
+            <div class="kpi-label">Nivel Medio</div>
             <p class="kpi-number">{medio}</p>
-            <div class="kpi-unit">provincias/comarcas</div>
+            <div class="kpi-unit">territorios</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -290,12 +314,13 @@ with k3:
 
 with k4:
     bajo = int((data["Categoria"] == "Bajo").sum())
+
     st.markdown(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Riesgo Bajo</div>
+            <div class="kpi-label">Nivel Bajo</div>
             <p class="kpi-number">{bajo}</p>
-            <div class="kpi-unit">provincias/comarcas</div>
+            <div class="kpi-unit">territorios</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -308,7 +333,6 @@ st.markdown("")
 # GEOJSON LOAD
 # ============================================================
 
-
 with open(
     "panama-provincias.geojson",
     "r",
@@ -316,18 +340,22 @@ with open(
 ) as f:
     panama = json.load(f)
 
+
 def normalizar(texto):
     texto = str(texto)
     texto = unicodedata.normalize("NFKD", texto)
+
     texto = "".join(
         caracter
         for caracter in texto
         if not unicodedata.combining(caracter)
     )
+
     texto = texto.lower()
     texto = texto.replace("provincia de ", "")
     texto = texto.replace("comarca ", "")
     texto = texto.strip()
+
     return texto
 
 
@@ -335,14 +363,10 @@ data["map_key"] = data["Territorio"].apply(normalizar)
 
 for feature in panama["features"]:
     propiedades = feature["properties"]
-    nombre = propiedades.get("Provincia", "")
+    nombre = propiedades.get("NOMBRE", "")
     propiedades["map_key"] = normalizar(nombre)
 
 
-# ============================================================
-# MAPA CHOROPLETH
-# ============================================================
-# Mantener en el GeoJSON únicamente los territorios presentes en los datos
 territorios_validos = set(data["map_key"])
 
 panama["features"] = [
@@ -350,6 +374,12 @@ panama["features"] = [
     for feature in panama["features"]
     if feature["properties"]["map_key"] in territorios_validos
 ]
+
+
+# ============================================================
+# MAPA CHOROPLETH
+# ============================================================
+
 fig_data = px.choropleth(
     data,
     geojson=panama,
@@ -366,11 +396,42 @@ fig_data = px.choropleth(
     },
     hover_name="Territorio",
     hover_data={
-        "Desempleo": ":.0f",
+        "Hard No": True,
         "Categoria": True,
-        "map_key": False
+        "map_key": False,
+        "Latitud": False,
+        "Longitud": False
     }
 )
+
+
+# ============================================================
+# LABELS SOBRE EL MAPA
+# ============================================================
+
+data["Etiqueta"] = (
+    data["Territorio"]
+    + "<br><b>"
+    + data["Hard No"].astype(str)
+    + "%</b>"
+)
+
+fig_data.add_trace(
+    go.Scattergeo(
+        lon=data["Longitud"],
+        lat=data["Latitud"],
+        text=data["Etiqueta"],
+        mode="text",
+        textfont={
+            "size": 11,
+            "color": "#1A1A1A",
+            "family": "Arial"
+        },
+        hoverinfo="skip",
+        showlegend=False
+    )
+)
+
 
 fig_data.update_geos(
     fitbounds="locations",
@@ -381,9 +442,15 @@ fig_data.update_geos(
 )
 
 fig_data.update_traces(
+    selector={"type": "choropleth"},
     marker_line_color="white",
     marker_line_width=1.2,
-    hovertemplate="<b>%{customdata[1]}</b><br>Desempleo: %{customdata[0]:.0f}<br>Nivel: %{customdata[2]}<extra></extra>"
+    hovertemplate=(
+        "<b>%{customdata[0]}</b>"
+        "<br>Hard No: %{customdata[1]}%"
+        "<br>Nivel: %{customdata[2]}"
+        "<extra></extra>"
+    )
 )
 
 fig_data.update_layout(
@@ -391,7 +458,7 @@ fig_data.update_layout(
     paper_bgcolor="white",
     plot_bgcolor="white",
     margin={"r": 0, "t": 20, "l": 0, "b": 0},
-    legend_title_text="Nivel de Riesgo",
+    legend_title_text="Nivel Hard No",
     legend={
         "orientation": "v",
         "yanchor": "top",
@@ -412,80 +479,62 @@ fig_data.update_layout(
 map_col, rank_col = st.columns([2, 1], gap="medium")
 
 with map_col:
-    st.markdown('<h3 class="section-title">Mapa </h3>', unsafe_allow_html=True)
-    st.plotly_chart(fig_data, use_container_width=True)
     st.markdown(
-        '<p class="info-caption">Los tonos más intensos representan mayores niveles de desempleo normalizado. Escala: Rojo claro (Bajo) → Rojo coral (Medio) → Rojo intenso (Alto).</p>',
+        '<h3 class="section-title">Hard No por territorio</h3>',
+        unsafe_allow_html=True
+    )
+
+    st.plotly_chart(
+        fig_data,
+        use_container_width=True
+    )
+
+    st.markdown(
+        """
+        <p class="info-caption">
+            El porcentaje representa la proporción de personas clasificadas
+            como Hard No en cada provincia o comarca.
+        </p>
+        """,
         unsafe_allow_html=True
     )
 
 with rank_col:
-    st.markdown('<h3 class="section-title">Ranking Territorial</h3>', unsafe_allow_html=True)
-    
-    ranking = data.sort_values("Desempleo", ascending=False).copy()
-    
+    st.markdown(
+        '<h3 class="section-title">Ranking Territorial</h3>',
+        unsafe_allow_html=True
+    )
+
+    ranking = data.sort_values(
+        "Hard No",
+        ascending=False
+    ).copy()
+
     def badge(cat):
         if cat == "Alto":
             return '<span class="badge-alto">Alto</span>'
+
         elif cat == "Medio":
             return '<span class="badge-medio">Medio</span>'
+
         return '<span class="badge-bajo">Bajo</span>'
-    
+
     ranking["Nivel"] = ranking["Categoria"].apply(badge)
-    
-    ranking_html = ranking[["Territorio", "Desempleo", "Nivel"]].to_html(
+    ranking["Hard No"] = ranking["Hard No"].astype(str) + "%"
+
+    ranking_html = ranking[
+        ["Territorio", "Hard No", "Nivel"]
+    ].to_html(
         escape=False,
         index=False,
-        col_space={"Territorio": "60%", "Desempleo": "20%", "Nivel": "20%"}
+        col_space={
+            "Territorio": "55%",
+            "Hard No": "20%",
+            "Nivel": "25%"
+        }
     )
-    
+
     st.markdown(
         f'<div class="container-box">{ranking_html}</div>',
-        unsafe_allow_html=True
-    )
-
-
-# ============================================================
-# SECCIÓN: ÍNDICE DE MISERIA
-# ============================================================
-
-st.markdown("")
-st.markdown('<h2 style="font-size: 24px; font-weight: 700; margin-top: 2rem;">Índice de Miseria</h2>', unsafe_allow_html=True)
-
-col_miseria, col_referencia = st.columns([2.2, 1], gap="medium")
-
-with col_miseria:
-    st.markdown('<h3 class="section-title">Resultado Territorial</h3>', unsafe_allow_html=True)
-    
-    tabla_miseria = data[["Territorio", "Indice de Miseria"]].sort_values(
-        "Indice de Miseria",
-        ascending=False
-    )
-    
-    tabla_html = tabla_miseria.to_html(
-        escape=False,
-        index=False
-    )
-    
-    st.markdown(
-        f'<div class="container-box">{tabla_html}</div>',
-        unsafe_allow_html=True
-    )
-
-with col_referencia:
-    st.markdown('<h3 class="section-title">Referencia Nacional</h3>', unsafe_allow_html=True)
-    
-    referencia = pd.DataFrame({
-        "Indicador": ["Índice de Miseria", "Desempleo"],
-        "Valor Nacional": [indice_nacional_miseria, indice_nacional_desempleo]
-    })
-    
-    ref_html = referencia.to_html(
-        escape=False,
-        index=False
-    )
-    
-    st.markdown(
-        f'<div class="container-box">{ref_html}</div>',
         unsafe_allow_html=True
     )
