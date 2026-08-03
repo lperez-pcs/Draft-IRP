@@ -5,6 +5,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from shapely.geometry import shape, mapping, MultiPolygon
+from shapely.geometry.polygon import orient
 
 
 # ============================================================
@@ -375,7 +377,28 @@ panama["features"] = [
     if feature["properties"]["map_key"] in territorios_validos
 ]
 
+with open(
+    "panama-provincias.geojson",
+    "r",
+    encoding="utf-8"
+) as f:
+    panama = json.load(f)
 
+
+# Corregir orientación de los polígonos
+for feature in panama["features"]:
+    geom = shape(feature["geometry"])
+
+    if geom.geom_type == "Polygon":
+        geom = orient(geom, sign=1.0)
+
+    elif geom.geom_type == "MultiPolygon":
+        geom = MultiPolygon([
+            orient(poligono, sign=1.0)
+            for poligono in geom.geoms
+        ])
+
+    feature["geometry"] = mapping(geom)
 # ============================================================
 # MAPA CHOROPLETH
 # ============================================================
