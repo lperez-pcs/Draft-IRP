@@ -46,7 +46,7 @@ st.markdown(
         background: white;
         border-radius: 12px;
         padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0,0.06);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         border: 1px solid #F0F0F0;
         min-height: 110px;
         display: flex;
@@ -78,7 +78,7 @@ st.markdown(
     }
 
     .section-title {
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 700;
         color: #1A1A1A;
         margin-bottom: 1rem;
@@ -226,7 +226,7 @@ hard_no_nacional = 32
 
 
 # ============================================================
-# FUNCIONES DE NORMALIZACIÓN
+# NORMALIZAR NOMBRES
 # ============================================================
 
 def normalizar(texto):
@@ -250,7 +250,7 @@ def normalizar(texto):
     texto = texto.replace("-", " ")
     texto = " ".join(texto.split())
 
-    # Unificar todas las variantes de Ngäbe / Ngöbe Buglé
+    # Unificar variantes de Ngäbe/Ngöbe Buglé
     if texto in [
         "ngabe bugle",
         "ngobe bugle"
@@ -261,17 +261,13 @@ def normalizar(texto):
 
 
 # ============================================================
-# FUNCIONES PARA CALCULAR EL CENTRO DE CADA PROVINCIA
+# CALCULAR CENTROIDE DE UN POLÍGONO
 # ============================================================
 
-def centro_anillo(coordenadas):
-    """
-    Calcula el centroide geométrico de un anillo poligonal.
-    Devuelve longitud, latitud y área.
-    """
+def centroide_anillo(coordenadas):
 
-    if len(coordenadas) < 3:
-        return None
+    if not coordenadas or len(coordenadas) < 3:
+        return None, None, 0
 
     area_doble = 0
     centro_x = 0
@@ -279,14 +275,17 @@ def centro_anillo(coordenadas):
 
     for i in range(len(coordenadas) - 1):
 
-        x1, y1 = coordenadas[i][0], coordenadas[i][1]
-        x2, y2 = coordenadas[i + 1][0], coordenadas[i + 1][1]
+        x1 = coordenadas[i][0]
+        y1 = coordenadas[i][1]
 
-        cruzado = (x1 * y2) - (x2 * y1)
+        x2 = coordenadas[i + 1][0]
+        y2 = coordenadas[i + 1][1]
 
-        area_doble += cruzado
-        centro_x += (x1 + x2) * cruzado
-        centro_y += (y1 + y2) * cruzado
+        producto_cruzado = (x1 * y2) - (x2 * y1)
+
+        area_doble += producto_cruzado
+        centro_x += (x1 + x2) * producto_cruzado
+        centro_y += (y1 + y2) * producto_cruzado
 
     if abs(area_doble) < 1e-12:
 
@@ -315,12 +314,6 @@ def centro_anillo(coordenadas):
 
 
 def centro_geometria(geometria):
-    """
-    Para Polygon utiliza su anillo exterior.
-
-    Para MultiPolygon selecciona el polígono de mayor superficie,
-    evitando que las islas pequeñas desplacen la etiqueta.
-    """
 
     tipo = geometria.get("type")
     coordenadas = geometria.get("coordinates", [])
@@ -330,42 +323,47 @@ def centro_geometria(geometria):
     if tipo == "Polygon":
 
         if coordenadas:
-            resultado = centro_anillo(
+
+            resultado = centroide_anillo(
                 coordenadas[0]
             )
 
-            if resultado:
-                candidatos.append(resultado)
+            candidatos.append(resultado)
 
     elif tipo == "MultiPolygon":
 
         for poligono in coordenadas:
 
             if poligono:
-                resultado = centro_anillo(
+
+                resultado = centroide_anillo(
                     poligono[0]
                 )
 
-                if resultado:
-                    candidatos.append(resultado)
+                candidatos.append(resultado)
+
+    candidatos = [
+        resultado
+        for resultado in candidatos
+        if resultado[0] is not None
+    ]
 
     if not candidatos:
         return None, None
 
-    # Escoger el polígono más grande del territorio
-    candidato_principal = max(
+    poligono_principal = max(
         candidatos,
-        key=lambda elemento: elemento[2]
+        key=lambda resultado: resultado[2]
     )
 
     return (
-        candidato_principal[0],
-        candidato_principal[1]
+        poligono_principal[0],
+        poligono_principal[1]
     )
 
 
 # ============================================================
-# KPI GENERALES
+# KPI
 # ============================================================
 
 territorio_mayor = data.loc[
@@ -380,10 +378,6 @@ promedio_territorial = data[
     "Hard No"
 ].mean()
 
-
-# ============================================================
-# KPI DASHBOARD
-# ============================================================
 
 k1, k2, k3, k4 = st.columns(
     4,
@@ -491,30 +485,28 @@ st.markdown("")
 
 
 # ============================================================
-# CARGAR GEOJSON
+# CARGAR TEST.GEOJSON
 # ============================================================
 
 with open(
-    "panama-provinciasV0.geojson",
+    "TEST.geojson",
     "r",
     encoding="utf-8"
-) as f:
+) as archivo_geojson:
 
-    panama = json.load(f)
+    panama = json.load(
+        archivo_geojson
+    )
 
 
 # ============================================================
-# CREAR MAP_KEY EN DATOS
+# CREAR IDENTIFICADORES
 # ============================================================
 
 data["map_key"] = data[
     "Territorio"
 ].apply(normalizar)
 
-
-# ============================================================
-# CREAR MAP_KEY Y CENTROS DESDE EL GEOJSON
-# ============================================================
 
 centros = []
 
@@ -526,7 +518,7 @@ for feature in panama["features"]:
         {}
     )
 
-    # Este archivo utiliza NOMBRE
+    # TEST.geojson utiliza el campo NOMBRE
     nombre = propiedades.get(
         "NOMBRE",
         ""
@@ -539,7 +531,10 @@ for feature in panama["features"]:
     propiedades["map_key"] = map_key
 
     centro_lon, centro_lat = centro_geometria(
-        feature["geometry"]
+        feature.get(
+            "geometry",
+            {}
+        )
     )
 
     centros.append({
@@ -555,26 +550,44 @@ centros_df = pd.DataFrame(
 
 
 # ============================================================
-# FILTRAR TERRITORIOS QUE TIENEN DATOS
+# COMPROBAR COINCIDENCIAS
 # ============================================================
 
-territorios_validos = set(
+claves_datos = set(
     data["map_key"]
 )
 
+claves_geojson = {
+    feature["properties"]["map_key"]
+    for feature in panama["features"]
+}
+
+
+faltantes_geojson = claves_datos - claves_geojson
+
+
+if faltantes_geojson:
+
+    st.error(
+        "Estos territorios no coinciden con el GeoJSON: "
+        + ", ".join(sorted(faltantes_geojson))
+    )
+
+
+# ============================================================
+# FILTRAR SOLO TERRITORIOS CON DATOS
+# ============================================================
 
 panama["features"] = [
     feature
-
     for feature in panama["features"]
-
     if feature["properties"]["map_key"]
-    in territorios_validos
+    in claves_datos
 ]
 
 
 # ============================================================
-# AGREGAR CENTROS A LA TABLA
+# UNIR CENTROS CON LOS DATOS
 # ============================================================
 
 data = data.merge(
@@ -585,20 +598,21 @@ data = data.merge(
 
 
 # ============================================================
-# AJUSTES VISUALES PUNTUALES DE ETIQUETAS
+# AJUSTES VISUALES DE POSICIÓN
 # ============================================================
-# Estos ajustes mantienen la etiqueta dentro de la provincia
-# cuando el centro geométrico queda cerca de una frontera.
+# Son movimientos pequeños para evitar que algunos nombres
+# queden sobre una frontera.
 
 ajustes_labels = {
+
     "bocas del toro": {
-        "lon": 0.00,
+        "lon": -0.02,
         "lat": 0.00
     },
 
     "ngabe bugle": {
         "lon": 0.00,
-        "lat": -0.03
+        "lat": 0.00
     },
 
     "chiriqui": {
@@ -617,7 +631,7 @@ ajustes_labels = {
     },
 
     "los santos": {
-        "lon": 0.04,
+        "lon": 0.03,
         "lat": -0.03
     },
 
@@ -632,8 +646,8 @@ ajustes_labels = {
     },
 
     "panama oeste": {
-        "lon": -0.03,
-        "lat": -0.03
+        "lon": -0.02,
+        "lat": -0.02
     },
 
     "panama": {
@@ -670,7 +684,7 @@ for indice, fila in data.iterrows():
 
 
 # ============================================================
-# ETIQUETAS
+# TEXTO DE LAS ETIQUETAS
 # ============================================================
 
 data["Etiqueta"] = (
@@ -684,7 +698,24 @@ data["Etiqueta"] = (
 
 
 # ============================================================
-# MAPA CHOROPLETH CONTINUO
+# TAMAÑO DEL RESALTADO
+# ============================================================
+# El círculo aumenta ligeramente para nombres largos.
+
+data["Tamaño Label"] = (
+    data["Territorio"]
+    .str.len()
+    .apply(
+        lambda longitud: max(
+            38,
+            min(62, longitud * 3.1)
+        )
+    )
+)
+
+
+# ============================================================
+# MAPA
 # ============================================================
 
 fig_data = px.choropleth(
@@ -699,20 +730,18 @@ fig_data = px.choropleth(
     color="Hard No",
 
     color_continuous_scale=[
-        [0.00, "#FDE7E5"],
-        [0.20, "#F9C5C1"],
-        [0.40, "#F58F86"],
-        [0.60, "#EF5A50"],
-        [0.80, "#D9342B"],
-        [1.00, "#A90F0F"]
+        [0.00, "#FDE3E1"],
+        [0.20, "#F8B7B2"],
+        [0.40, "#F17D74"],
+        [0.60, "#E84A40"],
+        [0.80, "#C92525"],
+        [1.00, "#850B0B"]
     ],
 
     range_color=(
         data["Hard No"].min(),
         data["Hard No"].max()
     ),
-
-    hover_name="Territorio",
 
     custom_data=[
         "Territorio",
@@ -724,11 +753,9 @@ fig_data = px.choropleth(
 
 
 # ============================================================
-# FONDO SEMITRANSPARENTE DE LOS LABELS
+# RESALTADO GRIS TRANSLÚCIDO
 # ============================================================
-# Plotly no permite un rectángulo de fondo directamente dentro
-# de Scattergeo. Se utiliza un marcador gris semitransparente
-# detrás del texto para crear una placa visual legible.
+# Es circular y suave; no es un cuadro.
 
 fig_data.add_trace(
     go.Scattergeo(
@@ -740,13 +767,13 @@ fig_data.add_trace(
         mode="markers",
 
         marker={
-            "size": 54,
-            "color": "rgba(210, 210, 210, 0.78)",
+            "size": data["Tamaño Label"],
+            "color": "rgba(220, 220, 220, 0.68)",
             "line": {
-                "color": "rgba(120, 120, 120, 0.55)",
-                "width": 0.7
+                "color": "rgba(110, 110, 110, 0.25)",
+                "width": 0.5
             },
-            "symbol": "square"
+            "symbol": "circle"
         },
 
         hoverinfo="skip",
@@ -757,7 +784,7 @@ fig_data.add_trace(
 
 
 # ============================================================
-# TEXTO SOBRE LOS LABELS
+# TEXTO CENTRADO SOBRE EL RESALTADO
 # ============================================================
 
 fig_data.add_trace(
@@ -812,7 +839,7 @@ fig_data.update_traces(
 
     marker_line_color="white",
 
-    marker_line_width=1.2,
+    marker_line_width=1.4,
 
     hovertemplate=(
         "<b>%{customdata[0]}</b>"
@@ -849,11 +876,11 @@ fig_data.update_layout(
             "text": "Hard No (%)"
         },
 
-        "thickness": 14,
+        "thickness": 15,
 
-        "len": 0.55,
+        "len": 0.57,
 
-        "y": 0.72,
+        "y": 0.70,
 
         "x": 0.98,
 
@@ -900,8 +927,8 @@ with map_col:
 
             El porcentaje representa la proporción de personas
             clasificadas como Hard No en cada provincia o comarca.
-            Los tonos más oscuros representan porcentajes más altos
-            y los tonos más claros porcentajes más bajos.
+            Los tonos más oscuros indican una mayor incidencia
+            territorial de Hard No.
 
         </p>
         """,
