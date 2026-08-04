@@ -135,10 +135,11 @@ st.markdown(
 
 
 # ============================================================
-# FUNCIÓN PARA MOSTRAR HTML SIN QUE APAREZCA COMO CÓDIGO
+# FUNCIÓN PARA MOSTRAR HTML
 # ============================================================
 
 def mostrar_html(contenido):
+
     st.markdown(
         textwrap.dedent(contenido).strip(),
         unsafe_allow_html=True
@@ -152,6 +153,7 @@ def mostrar_html(contenido):
 mostrar_html(
     """
     <div class="title-section">
+
         <h1 style="margin:0 0 0.5rem 0; font-size:32px;">
             Termómetro Nacional
         </h1>
@@ -163,6 +165,7 @@ mostrar_html(
         <p style="margin:0.5rem 0 0 0; font-size:12px; color:#999;">
             Perfilamiento territorial · Hard No
         </p>
+
     </div>
     """
 )
@@ -173,6 +176,7 @@ mostrar_html(
 # ============================================================
 
 data = pd.DataFrame({
+
     "Territorio": [
         "Bocas del Toro",
         "Ngäbe Buglé",
@@ -254,12 +258,27 @@ def normalizar(texto):
     )
 
     texto = texto.lower()
-    texto = texto.replace("provincia de ", "")
-    texto = texto.replace("comarca ", "")
-    texto = texto.replace("-", " ")
-    texto = " ".join(texto.split())
 
-    # Unifica Ngäbe y Ngöbe
+    texto = texto.replace(
+        "provincia de ",
+        ""
+    )
+
+    texto = texto.replace(
+        "comarca ",
+        ""
+    )
+
+    texto = texto.replace(
+        "-",
+        " "
+    )
+
+    texto = " ".join(
+        texto.split()
+    )
+
+    # Igualar Ngäbe y Ngöbe
     if texto in {
         "ngabe bugle",
         "ngobe bugle"
@@ -270,7 +289,133 @@ def normalizar(texto):
 
 
 # ============================================================
-# CÁLCULO DE CENTROIDE SIN SHAPELY
+# CORREGIR ORIENTACIÓN DE LOS POLÍGONOS
+# ============================================================
+
+def area_firmada(anillo):
+
+    if not anillo or len(anillo) < 3:
+        return 0
+
+    puntos = list(anillo)
+
+    if puntos[0] != puntos[-1]:
+        puntos.append(puntos[0])
+
+    area = 0.0
+
+    for i in range(len(puntos) - 1):
+
+        x1, y1 = puntos[i][0], puntos[i][1]
+        x2, y2 = puntos[i + 1][0], puntos[i + 1][1]
+
+        area += (
+            x1 * y2
+            -
+            x2 * y1
+        )
+
+    return area / 2.0
+
+
+def corregir_anillo_exterior(anillo):
+
+    puntos = list(anillo)
+
+    if not puntos:
+        return puntos
+
+    if puntos[0] != puntos[-1]:
+        puntos.append(puntos[0])
+
+    # El anillo exterior debe quedar antihorario
+    if area_firmada(puntos) < 0:
+        puntos = list(reversed(puntos))
+
+    return puntos
+
+
+def corregir_anillo_interior(anillo):
+
+    puntos = list(anillo)
+
+    if not puntos:
+        return puntos
+
+    if puntos[0] != puntos[-1]:
+        puntos.append(puntos[0])
+
+    # Los agujeros deben quedar en sentido contrario
+    if area_firmada(puntos) > 0:
+        puntos = list(reversed(puntos))
+
+    return puntos
+
+
+def corregir_orientacion_geojson(geojson):
+
+    for feature in geojson.get(
+        "features",
+        []
+    ):
+
+        geometria = feature.get(
+            "geometry",
+            {}
+        )
+
+        tipo = geometria.get(
+            "type"
+        )
+
+        coordenadas = geometria.get(
+            "coordinates",
+            []
+        )
+
+        if tipo == "Polygon":
+
+            if not coordenadas:
+                continue
+
+            coordenadas[0] = corregir_anillo_exterior(
+                coordenadas[0]
+            )
+
+            for i in range(
+                1,
+                len(coordenadas)
+            ):
+
+                coordenadas[i] = corregir_anillo_interior(
+                    coordenadas[i]
+                )
+
+        elif tipo == "MultiPolygon":
+
+            for poligono in coordenadas:
+
+                if not poligono:
+                    continue
+
+                poligono[0] = corregir_anillo_exterior(
+                    poligono[0]
+                )
+
+                for i in range(
+                    1,
+                    len(poligono)
+                ):
+
+                    poligono[i] = corregir_anillo_interior(
+                        poligono[i]
+                    )
+
+    return geojson
+
+
+# ============================================================
+# CALCULAR CENTROIDE DEL POLÍGONO
 # ============================================================
 
 def centroide_anillo(coordenadas):
@@ -278,9 +423,8 @@ def centroide_anillo(coordenadas):
     if not coordenadas or len(coordenadas) < 3:
         return None, None, 0
 
-    puntos = coordenadas.copy()
+    puntos = list(coordenadas)
 
-    # Cerrar el anillo si no está cerrado
     if puntos[0] != puntos[-1]:
         puntos.append(puntos[0])
 
@@ -293,16 +437,33 @@ def centroide_anillo(coordenadas):
         x1, y1 = puntos[i][0], puntos[i][1]
         x2, y2 = puntos[i + 1][0], puntos[i + 1][1]
 
-        cruzado = (x1 * y2) - (x2 * y1)
+        cruzado = (
+            x1 * y2
+            -
+            x2 * y1
+        )
 
         area_doble += cruzado
-        centro_x += (x1 + x2) * cruzado
-        centro_y += (y1 + y2) * cruzado
+
+        centro_x += (
+            x1 + x2
+        ) * cruzado
+
+        centro_y += (
+            y1 + y2
+        ) * cruzado
 
     if abs(area_doble) < 1e-12:
 
-        longitudes = [punto[0] for punto in puntos]
-        latitudes = [punto[1] for punto in puntos]
+        longitudes = [
+            punto[0]
+            for punto in puntos
+        ]
+
+        latitudes = [
+            punto[1]
+            for punto in puntos
+        ]
 
         return (
             sum(longitudes) / len(longitudes),
@@ -310,25 +471,45 @@ def centroide_anillo(coordenadas):
             0
         )
 
-    centro_x = centro_x / (3 * area_doble)
-    centro_y = centro_y / (3 * area_doble)
+    centro_x = centro_x / (
+        3 * area_doble
+    )
 
-    area = abs(area_doble / 2)
+    centro_y = centro_y / (
+        3 * area_doble
+    )
 
-    return centro_x, centro_y, area
+    area = abs(
+        area_doble / 2
+    )
+
+    return (
+        centro_x,
+        centro_y,
+        area
+    )
 
 
 def centro_geometria(geometria):
 
-    tipo = geometria.get("type")
-    coordenadas = geometria.get("coordinates", [])
+    tipo = geometria.get(
+        "type"
+    )
+
+    coordenadas = geometria.get(
+        "coordinates",
+        []
+    )
 
     candidatos = []
 
     if tipo == "Polygon":
 
         if coordenadas:
-            resultado = centroide_anillo(coordenadas[0])
+
+            resultado = centroide_anillo(
+                coordenadas[0]
+            )
 
             if resultado[0] is not None:
                 candidatos.append(resultado)
@@ -337,22 +518,29 @@ def centro_geometria(geometria):
 
         for poligono in coordenadas:
 
-            if poligono:
-                resultado = centroide_anillo(poligono[0])
+            if not poligono:
+                continue
 
-                if resultado[0] is not None:
-                    candidatos.append(resultado)
+            resultado = centroide_anillo(
+                poligono[0]
+            )
+
+            if resultado[0] is not None:
+                candidatos.append(resultado)
 
     if not candidatos:
         return None, None
 
-    # Usa el polígono más grande del territorio
+    # Usa la parte más grande del territorio
     principal = max(
         candidatos,
         key=lambda elemento: elemento[2]
     )
 
-    return principal[0], principal[1]
+    return (
+        principal[0],
+        principal[1]
+    )
 
 
 # ============================================================
@@ -387,9 +575,19 @@ with k1:
     mostrar_html(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Hard No Nacional</div>
-            <p class="kpi-number">{hard_no_nacional}%</p>
-            <div class="kpi-unit">resultado nacional ponderado</div>
+
+            <div class="kpi-label">
+                Hard No Nacional
+            </div>
+
+            <p class="kpi-number">
+                {hard_no_nacional}%
+            </p>
+
+            <div class="kpi-unit">
+                resultado nacional ponderado
+            </div>
+
         </div>
         """
     )
@@ -400,9 +598,19 @@ with k2:
     mostrar_html(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Mayor porcentaje</div>
-            <p class="kpi-number">{territorio_mayor["Hard No"]}%</p>
-            <div class="kpi-unit">{territorio_mayor["Territorio"]}</div>
+
+            <div class="kpi-label">
+                Mayor porcentaje
+            </div>
+
+            <p class="kpi-number">
+                {territorio_mayor["Hard No"]}%
+            </p>
+
+            <div class="kpi-unit">
+                {territorio_mayor["Territorio"]}
+            </div>
+
         </div>
         """
     )
@@ -413,9 +621,19 @@ with k3:
     mostrar_html(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Menor porcentaje</div>
-            <p class="kpi-number">{territorio_menor["Hard No"]}%</p>
-            <div class="kpi-unit">{territorio_menor["Territorio"]}</div>
+
+            <div class="kpi-label">
+                Menor porcentaje
+            </div>
+
+            <p class="kpi-number">
+                {territorio_menor["Hard No"]}%
+            </p>
+
+            <div class="kpi-unit">
+                {territorio_menor["Territorio"]}
+            </div>
+
         </div>
         """
     )
@@ -426,9 +644,19 @@ with k4:
     mostrar_html(
         f"""
         <div class="kpi-card">
-            <div class="kpi-label">Promedio territorial</div>
-            <p class="kpi-number">{promedio_territorial:.1f}%</p>
-            <div class="kpi-unit">promedio simple territorial</div>
+
+            <div class="kpi-label">
+                Promedio territorial
+            </div>
+
+            <p class="kpi-number">
+                {promedio_territorial:.1f}%
+            </p>
+
+            <div class="kpi-unit">
+                promedio simple territorial
+            </div>
+
         </div>
         """
     )
@@ -447,11 +675,19 @@ with open(
     encoding="utf-8"
 ) as archivo_geojson:
 
-    panama = json.load(archivo_geojson)
+    panama = json.load(
+        archivo_geojson
+    )
+
+
+# Corregir automáticamente la orientación
+panama = corregir_orientacion_geojson(
+    panama
+)
 
 
 # ============================================================
-# PREPARAR IDENTIFICADORES
+# CREAR IDENTIFICADORES
 # ============================================================
 
 data["map_key"] = data[
@@ -462,7 +698,10 @@ data["map_key"] = data[
 centros = []
 
 
-for feature in panama.get("features", []):
+for feature in panama.get(
+    "features",
+    []
+):
 
     propiedades = feature.get(
         "properties",
@@ -478,17 +717,26 @@ for feature in panama.get("features", []):
         nombre_geojson
     )
 
-    # Se usa el ID directo de GeoJSON.
+    # Identificador directo para Plotly
     feature["id"] = map_key
-    propiedades["map_key"] = map_key
+
+    propiedades[
+        "map_key"
+    ] = map_key
 
     centro_lon, centro_lat = centro_geometria(
-        feature.get("geometry", {})
+        feature.get(
+            "geometry",
+            {}
+        )
     )
 
     centros.append({
+
         "map_key": map_key,
+
         "Centro Longitud": centro_lon,
+
         "Centro Latitud": centro_lat
     })
 
@@ -499,52 +747,62 @@ centros_df = pd.DataFrame(
 
 
 # ============================================================
-# VERIFICAR QUE LOS 11 TERRITORIOS COINCIDAN
+# VERIFICAR COINCIDENCIAS
 # ============================================================
 
 claves_datos = set(
     data["map_key"]
 )
 
+
 claves_geojson = {
+
     feature["id"]
-    for feature in panama.get("features", [])
+
+    for feature in panama.get(
+        "features",
+        []
+    )
 }
 
 
-faltan_en_geojson = claves_datos - claves_geojson
-sobran_en_geojson = claves_geojson - claves_datos
+faltan_en_geojson = (
+    claves_datos
+    -
+    claves_geojson
+)
 
 
 if faltan_en_geojson:
 
     st.error(
         "No se encontraron en TEST.geojson: "
-        + ", ".join(sorted(faltan_en_geojson))
-    )
-
-
-if sobran_en_geojson:
-
-    st.warning(
-        "Territorios del GeoJSON sin datos: "
-        + ", ".join(sorted(sobran_en_geojson))
+        + ", ".join(
+            sorted(faltan_en_geojson)
+        )
     )
 
 
 # ============================================================
-# CONSERVAR SOLO TERRITORIOS CON DATOS
+# CONSERVAR SOLO LOS TERRITORIOS CON DATOS
 # ============================================================
 
 panama["features"] = [
+
     feature
-    for feature in panama.get("features", [])
-    if feature["id"] in claves_datos
+
+    for feature in panama.get(
+        "features",
+        []
+    )
+
+    if feature["id"]
+    in claves_datos
 ]
 
 
 # ============================================================
-# UNIR CENTROS CON DATOS
+# UNIR CENTROS CON LOS DATOS
 # ============================================================
 
 data = data.merge(
@@ -555,13 +813,13 @@ data = data.merge(
 
 
 # ============================================================
-# AJUSTES MANUALES PEQUEÑOS PARA CENTRAR LOS LABELS
+# AJUSTES VISUALES DE LOS LABELS
 # ============================================================
 
 ajustes_labels = {
 
     "bocas del toro": {
-        "lon": 0.03,
+        "lon": 0.02,
         "lat": 0.02
     },
 
@@ -571,23 +829,23 @@ ajustes_labels = {
     },
 
     "chiriqui": {
-        "lon": 0.00,
+        "lon": -0.01,
         "lat": -0.02
     },
 
     "veraguas": {
         "lon": 0.00,
-        "lat": -0.04
+        "lat": -0.03
     },
 
     "herrera": {
         "lon": 0.00,
-        "lat": 0.01
+        "lat": 0.02
     },
 
     "los santos": {
-        "lon": 0.02,
-        "lat": -0.02
+        "lon": 0.03,
+        "lat": -0.03
     },
 
     "cocle": {
@@ -601,7 +859,7 @@ ajustes_labels = {
     },
 
     "panama oeste": {
-        "lon": -0.01,
+        "lon": -0.02,
         "lat": -0.02
     },
 
@@ -627,15 +885,23 @@ for indice, fila in data.iterrows():
         }
     )
 
-    data.loc[
-        indice,
-        "Centro Longitud"
-    ] += ajuste["lon"]
+    if pd.notna(
+        fila["Centro Longitud"]
+    ):
 
-    data.loc[
-        indice,
-        "Centro Latitud"
-    ] += ajuste["lat"]
+        data.loc[
+            indice,
+            "Centro Longitud"
+        ] += ajuste["lon"]
+
+    if pd.notna(
+        fila["Centro Latitud"]
+    ):
+
+        data.loc[
+            indice,
+            "Centro Latitud"
+        ] += ajuste["lat"]
 
 
 # ============================================================
@@ -657,13 +923,13 @@ data["Etiqueta"] = (
 # ============================================================
 
 fig_data = px.choropleth(
+
     data,
 
     geojson=panama,
 
     locations="map_key",
 
-    # Ahora Plotly compara con feature["id"]
     featureidkey="id",
 
     color="Hard No",
@@ -692,10 +958,8 @@ fig_data = px.choropleth(
 
 
 # ============================================================
-# RESALTADO SUAVE DETRÁS DE LOS LABELS
+# RESALTADO DETRÁS DEL TEXTO
 # ============================================================
-# Plotly no permite un fondo rectangular ajustado al texto.
-# Este marcador circular funciona como un resaltado suave.
 
 fig_data.add_trace(
     go.Scattergeo(
@@ -707,11 +971,11 @@ fig_data.add_trace(
         mode="markers",
 
         marker={
-            "size": 42,
-            "color": "rgba(225, 225, 225, 0.68)",
+            "size": 39,
+            "color": "rgba(225, 225, 225, 0.63)",
             "line": {
-                "color": "rgba(130, 130, 130, 0.18)",
-                "width": 0.4
+                "color": "rgba(130, 130, 130, 0.15)",
+                "width": 0.3
             },
             "symbol": "circle"
         },
@@ -758,11 +1022,17 @@ fig_data.add_trace(
 # ============================================================
 
 fig_data.update_geos(
+
     fitbounds="locations",
+
     visible=False,
+
     showcountries=False,
+
     showcoastlines=False,
+
     showframe=False,
+
     bgcolor="white"
 )
 
@@ -772,6 +1042,7 @@ fig_data.update_geos(
 # ============================================================
 
 fig_data.update_traces(
+
     selector={
         "type": "choropleth"
     },
@@ -869,10 +1140,12 @@ with map_col:
     mostrar_html(
         """
         <p class="info-caption">
+
             El porcentaje representa la proporción de personas
             clasificadas como Hard No en cada provincia o comarca.
             Los tonos más oscuros indican una mayor incidencia
             territorial de Hard No.
+
         </p>
         """
     )
