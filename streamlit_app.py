@@ -1,15 +1,35 @@
+# ============================================================
+# 1. IMPORTAMOS LAS LIBRERÍAS
+# ============================================================
+
+# json:
+# Nos permite trabajar con el GeoJSON que devuelve ArcGIS.
 import json
-import textwrap
+
+# unicodedata:
+# Lo usamos para normalizar nombres.
+# Ejemplo: "Colón" -> "colon"
 import unicodedata
 
+# requests:
+# Permite que Python consulte directamente la URL de ArcGIS.
+import requests
+
+# pandas:
+# Para trabajar con nuestra tabla de datos.
 import pandas as pd
-import plotly.express as px
+
+# plotly.graph_objects:
+# Lo usaremos para construir el mapa por capas.
 import plotly.graph_objects as go
+
+# streamlit:
+# Construye toda nuestra aplicación web.
 import streamlit as st
 
 
 # ============================================================
-# CONFIGURACIÓN GENERAL
+# 2. CONFIGURACIÓN GENERAL DE STREAMLIT
 # ============================================================
 
 st.set_page_config(
@@ -20,160 +40,29 @@ st.set_page_config(
 
 
 # ============================================================
-# ESTILOS
+# 3. TÍTULO DE LA APLICACIÓN
 # ============================================================
 
-st.markdown(
-    """
-    <style>
+st.title("Termómetro Nacional")
 
-    .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
-        max-width: 1600px;
-    }
-
-    div[data-testid="stVerticalBlock"] {
-        gap: 0.65rem;
-    }
-
-    .title-section {
-        margin-bottom: 1.6rem;
-        border-bottom: 2px solid #E8E8E8;
-        padding-bottom: 1.2rem;
-    }
-
-    .kpi-card {
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        border: 1px solid #F0F0F0;
-        min-height: 110px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-
-    .kpi-label {
-        font-size: 13px;
-        color: #666;
-        margin-bottom: 8px;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .kpi-number {
-        font-size: 36px;
-        font-weight: 700;
-        color: #1A1A1A;
-        margin: 0;
-        line-height: 1;
-    }
-
-    .kpi-unit {
-        font-size: 12px;
-        color: #999;
-        margin-top: 7px;
-    }
-
-    .section-title {
-        font-size: 20px;
-        font-weight: 700;
-        color: #1A1A1A;
-        margin-bottom: 0.8rem;
-        margin-top: 0;
-    }
-
-    .container-box {
-        background: white;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        border: 1px solid #F0F0F0;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-    }
-
-    th {
-        background: #FAFAFA;
-        color: #666;
-        padding: 11px 8px;
-        text-align: left;
-        border-bottom: 2px solid #E8E8E8;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 10px;
-        letter-spacing: 0.4px;
-    }
-
-    td {
-        padding: 11px 8px;
-        border-bottom: 1px solid #F0F0F0;
-    }
-
-    tbody tr:hover {
-        background: #FAFAFA;
-    }
-
-    .info-caption {
-        font-size: 12px;
-        color: #777;
-        margin-top: 0.8rem;
-        line-height: 1.5;
-    }
-
-    </style>
-    """,
-    unsafe_allow_html=True
+st.caption(
+    "Territorial Risk Monitor — Panamá · "
+    "Perfilamiento territorial · Hard No"
 )
 
 
 # ============================================================
-# FUNCIÓN PARA MOSTRAR HTML
+# 4. DATOS DE HARD NO
 # ============================================================
 
-def mostrar_html(contenido):
-
-    st.markdown(
-        textwrap.dedent(contenido).strip(),
-        unsafe_allow_html=True
-    )
-
-
-# ============================================================
-# ENCABEZADO
-# ============================================================
-
-mostrar_html(
-    """
-    <div class="title-section">
-
-        <h1 style="margin:0 0 0.5rem 0; font-size:32px;">
-            Termómetro Nacional
-        </h1>
-
-        <p style="margin:0; font-size:16px; color:#666;">
-            Territorial Risk Monitor — Panamá
-        </p>
-
-        <p style="margin:0.5rem 0 0 0; font-size:12px; color:#999;">
-            Perfilamiento territorial · Hard No
-        </p>
-
-    </div>
-    """
-)
-
-
-# ============================================================
-# DATOS
-# ============================================================
+# Esta tabla representa nuestros datos.
+#
+# IMPORTANTE:
+# Las 10 provincias tienen información.
+# Ngäbe Buglé también tiene información.
+#
+# Las demás comarcas NO están aquí porque queremos que
+# aparezcan en gris, sin valor de Hard No.
 
 data = pd.DataFrame({
 
@@ -232,53 +121,99 @@ data = pd.DataFrame({
         22,
         18
     ]
+
 })
 
 
+# Resultado nacional
 hard_no_nacional = 32
 
 
 # ============================================================
-# NORMALIZACIÓN DE NOMBRES
+# 5. DEFINIMOS LAS 10 PROVINCIAS DE PANAMÁ
+# ============================================================
+
+# Esta lista es importante porque nos permite distinguir
+# automáticamente una provincia de una comarca.
+
+PROVINCIAS = {
+    "bocas del toro",
+    "cocle",
+    "colon",
+    "chiriqui",
+    "darien",
+    "herrera",
+    "los santos",
+    "panama",
+    "panama oeste",
+    "veraguas"
+}
+
+
+# ============================================================
+# 6. FUNCIÓN PARA NORMALIZAR NOMBRES
 # ============================================================
 
 def normalizar(texto):
+    """
+    Convierte distintos formatos de nombres en una misma clave.
+
+    Ejemplos:
+
+    Panamá          -> panama
+    Colón           -> colon
+    Chiriquí        -> chiriqui
+    Comarca Ngäbe Buglé -> ngabe bugle
+
+    Esto evita problemas cuando ArcGIS y nuestra tabla
+    escriben un territorio ligeramente diferente.
+    """
 
     texto = str(texto)
 
+    # Separar letras de sus tildes
     texto = unicodedata.normalize(
         "NFKD",
         texto
     )
 
+    # Eliminar las tildes
     texto = "".join(
         caracter
         for caracter in texto
         if not unicodedata.combining(caracter)
     )
 
+    # Todo en minúscula
     texto = texto.lower()
 
+    # Si ArcGIS escribe "Provincia de Panamá",
+    # eliminamos "provincia de".
     texto = texto.replace(
         "provincia de ",
         ""
     )
 
+    # Si ArcGIS escribe "Comarca Ngäbe Buglé",
+    # eliminamos "comarca".
     texto = texto.replace(
         "comarca ",
         ""
     )
 
+    # Convertimos guiones en espacios
     texto = texto.replace(
         "-",
         " "
     )
 
+    # Eliminamos espacios duplicados
     texto = " ".join(
         texto.split()
     )
 
-    # Igualar Ngäbe y Ngöbe
+    # Ngäbe también puede aparecer escrito como Ngöbe.
+    # Para nosotros ambos significarán lo mismo.
     if texto in {
         "ngabe bugle",
         "ngobe bugle"
@@ -289,150 +224,300 @@ def normalizar(texto):
 
 
 # ============================================================
-# CORREGIR ORIENTACIÓN DE LOS POLÍGONOS
+# 7. DESCARGAR LA CAPA DIRECTAMENTE DESDE ARCGIS
 # ============================================================
 
-def area_firmada(anillo):
+# Esta es la URL que tú encontraste.
+#
+# No descargamos el archivo manualmente.
+# Python consulta directamente el FeatureServer.
 
-    if not anillo or len(anillo) < 3:
-        return 0
-
-    puntos = list(anillo)
-
-    if puntos[0] != puntos[-1]:
-        puntos.append(puntos[0])
-
-    area = 0.0
-
-    for i in range(len(puntos) - 1):
-
-        x1, y1 = puntos[i][0], puntos[i][1]
-        x2, y2 = puntos[i + 1][0], puntos[i + 1][1]
-
-        area += (
-            x1 * y2
-            -
-            x2 * y1
-        )
-
-    return area / 2.0
+ARCGIS_URL = (
+    "https://services2.arcgis.com/"
+    "HRY6x8qt5qjGnAA9/"
+    "arcgis/rest/services/"
+    "Panama_Province_Boundaries_2024/"
+    "FeatureServer/0/query"
+)
 
 
-def corregir_anillo_exterior(anillo):
+# @st.cache_data significa:
+#
+# "No vuelvas a descargar 73 MB cada vez que alguien toca algo
+# en Streamlit".
+#
+# Streamlit guarda el resultado temporalmente.
+#
+# ttl=86400 = 24 horas.
 
-    puntos = list(anillo)
+@st.cache_data(
+    ttl=86400,
+    show_spinner=False
+)
+def cargar_mapa_arcgis():
 
-    if not puntos:
-        return puntos
+    # Parámetros enviados al servidor ArcGIS.
+    parametros = {
 
-    if puntos[0] != puntos[-1]:
-        puntos.append(puntos[0])
+        # 1=1 significa:
+        # tráeme todos los territorios.
+        "where": "1=1",
 
-    # El anillo exterior debe quedar antihorario
-    if area_firmada(puntos) < 0:
-        puntos = list(reversed(puntos))
+        # Solo necesitamos estos dos atributos.
+        # No traemos columnas innecesarias.
+        "outFields": "ID_PROV,Provincia",
 
-    return puntos
+        # Queremos las geometrías.
+        "returnGeometry": "true",
 
+        # EPSG 4326 = longitud/latitud.
+        # Es el sistema que Plotly necesita.
+        "outSR": "4326",
 
-def corregir_anillo_interior(anillo):
+        # Queremos GeoJSON.
+        "f": "geojson"
+    }
 
-    puntos = list(anillo)
+    respuesta = requests.get(
+        ARCGIS_URL,
+        params=parametros,
+        timeout=120
+    )
 
-    if not puntos:
-        return puntos
+    # Si ArcGIS devuelve un error,
+    # Streamlit nos mostrará el problema.
+    respuesta.raise_for_status()
 
-    if puntos[0] != puntos[-1]:
-        puntos.append(puntos[0])
-
-    # Los agujeros deben quedar en sentido contrario
-    if area_firmada(puntos) > 0:
-        puntos = list(reversed(puntos))
-
-    return puntos
-
-
-def corregir_orientacion_geojson(geojson):
-
-    for feature in geojson.get(
-        "features",
-        []
-    ):
-
-        geometria = feature.get(
-            "geometry",
-            {}
-        )
-
-        tipo = geometria.get(
-            "type"
-        )
-
-        coordenadas = geometria.get(
-            "coordinates",
-            []
-        )
-
-        if tipo == "Polygon":
-
-            if not coordenadas:
-                continue
-
-            coordenadas[0] = corregir_anillo_exterior(
-                coordenadas[0]
-            )
-
-            for i in range(
-                1,
-                len(coordenadas)
-            ):
-
-                coordenadas[i] = corregir_anillo_interior(
-                    coordenadas[i]
-                )
-
-        elif tipo == "MultiPolygon":
-
-            for poligono in coordenadas:
-
-                if not poligono:
-                    continue
-
-                poligono[0] = corregir_anillo_exterior(
-                    poligono[0]
-                )
-
-                for i in range(
-                    1,
-                    len(poligono)
-                ):
-
-                    poligono[i] = corregir_anillo_interior(
-                        poligono[i]
-                    )
+    geojson = respuesta.json()
 
     return geojson
 
 
+# Mientras descarga la primera vez,
+# mostramos un mensaje.
+
+with st.spinner(
+    "Cargando límites territoriales..."
+):
+    panama = cargar_mapa_arcgis()
+
+
 # ============================================================
-# CALCULAR CENTROIDE DEL POLÍGONO
+# 8. PREPARAR LOS NOMBRES DEL GEOJSON
+# ============================================================
+
+# Nuestra tabla también necesita la clave normalizada.
+
+data["map_key"] = (
+    data["Territorio"]
+    .apply(normalizar)
+)
+
+
+# Ahora recorremos cada territorio que vino de ArcGIS.
+
+for feature in panama["features"]:
+
+    propiedades = feature.get(
+        "properties",
+        {}
+    )
+
+    # La capa de ArcGIS utiliza la columna "Provincia".
+    nombre_arcgis = propiedades.get(
+        "Provincia",
+        ""
+    )
+
+    # Creamos una versión normalizada.
+    map_key = normalizar(
+        nombre_arcgis
+    )
+
+    # Guardamos esa clave dentro de la geometría.
+    propiedades["map_key"] = map_key
+
+    # También la ponemos como ID.
+    # Plotly utilizará este ID para hacer el match.
+    feature["id"] = map_key
+
+
+# ============================================================
+# 9. IDENTIFICAR PROVINCIAS Y COMARCAS
+# ============================================================
+
+# Creamos una tabla únicamente para entender qué
+# territorios llegaron desde ArcGIS.
+
+territorios_arcgis = []
+
+for feature in panama["features"]:
+
+    propiedades = feature["properties"]
+
+    nombre = propiedades.get(
+        "Provincia",
+        ""
+    )
+
+    clave = propiedades.get(
+        "map_key",
+        ""
+    )
+
+    # Si la clave está dentro de las 10 provincias:
+    if clave in PROVINCIAS:
+        tipo = "Provincia"
+
+    # Todo lo demás es tratado como comarca.
+    else:
+        tipo = "Comarca"
+
+    territorios_arcgis.append({
+        "Territorio ArcGIS": nombre,
+        "map_key": clave,
+        "Tipo": tipo
+    })
+
+
+territorios_arcgis = pd.DataFrame(
+    territorios_arcgis
+)
+
+
+# ============================================================
+# 10. SEPARAR COMARCAS SIN DATOS
+# ============================================================
+
+# Los territorios que tienen Hard No están aquí:
+
+territorios_con_datos = set(
+    data["map_key"]
+)
+
+
+# Todo territorio del ArcGIS que:
+#
+# 1. no es una de las 10 provincias
+# 2. no está dentro de nuestros datos
+#
+# será una comarca que debe aparecer gris.
+
+comarcas_grises = territorios_arcgis[
+
+    (territorios_arcgis["Tipo"] == "Comarca")
+
+    &
+
+    (~territorios_arcgis["map_key"].isin(
+        territorios_con_datos
+    ))
+
+].copy()
+
+
+# Ngäbe Buglé NO aparecerá aquí porque sí está
+# en territorios_con_datos.
+
+
+# ============================================================
+# 11. KPI
+# ============================================================
+
+territorio_mayor = data.loc[
+    data["Hard No"].idxmax()
+]
+
+territorio_menor = data.loc[
+    data["Hard No"].idxmin()
+]
+
+
+# Creamos cuatro columnas.
+
+k1, k2, k3, k4 = st.columns(4)
+
+
+with k1:
+
+    st.metric(
+        label="Hard No Nacional",
+        value=f"{hard_no_nacional}%"
+    )
+
+
+with k2:
+
+    st.metric(
+        label="Mayor porcentaje",
+        value=f'{territorio_mayor["Hard No"]}%',
+        help=territorio_mayor["Territorio"]
+    )
+
+    st.caption(
+        territorio_mayor["Territorio"]
+    )
+
+
+with k3:
+
+    st.metric(
+        label="Menor porcentaje",
+        value=f'{territorio_menor["Hard No"]}%',
+        help=territorio_menor["Territorio"]
+    )
+
+    st.caption(
+        territorio_menor["Territorio"]
+    )
+
+
+with k4:
+
+    st.metric(
+        label="Territorios analizados",
+        value=len(data)
+    )
+
+
+st.divider()
+
+
+# ============================================================
+# 12. FUNCIÓN PARA CALCULAR EL CENTRO DEL POLÍGONO
 # ============================================================
 
 def centroide_anillo(coordenadas):
+    """
+    Calcula aproximadamente el centro geométrico
+    de un polígono.
 
-    if not coordenadas or len(coordenadas) < 3:
-        return None, None, 0
+    Lo necesitamos para colocar:
+
+        Panamá
+        32%
+
+    en el centro de la provincia.
+    """
+
+    if not coordenadas:
+        return None
 
     puntos = list(coordenadas)
 
+    # Cerramos el polígono si fuese necesario.
     if puntos[0] != puntos[-1]:
-        puntos.append(puntos[0])
+        puntos.append(
+            puntos[0]
+        )
 
-    area_doble = 0
+    area = 0
     centro_x = 0
     centro_y = 0
 
-    for i in range(len(puntos) - 1):
+    for i in range(
+        len(puntos) - 1
+    ):
 
         x1, y1 = puntos[i][0], puntos[i][1]
         x2, y2 = puntos[i + 1][0], puntos[i + 1][1]
@@ -443,7 +528,7 @@ def centroide_anillo(coordenadas):
             x2 * y1
         )
 
-        area_doble += cruzado
+        area += cruzado
 
         centro_x += (
             x1 + x2
@@ -453,55 +538,52 @@ def centroide_anillo(coordenadas):
             y1 + y2
         ) * cruzado
 
-    if abs(area_doble) < 1e-12:
+    if abs(area) < 0.0000001:
+        return None
 
-        longitudes = [
-            punto[0]
-            for punto in puntos
-        ]
-
-        latitudes = [
-            punto[1]
-            for punto in puntos
-        ]
-
-        return (
-            sum(longitudes) / len(longitudes),
-            sum(latitudes) / len(latitudes),
-            0
-        )
-
-    centro_x = centro_x / (
-        3 * area_doble
+    centro_x /= (
+        3 * area
     )
 
-    centro_y = centro_y / (
-        3 * area_doble
+    centro_y /= (
+        3 * area
     )
 
-    area = abs(
-        area_doble / 2
-    )
-
-    return (
-        centro_x,
-        centro_y,
-        area
-    )
+    return {
+        "lon": centro_x,
+        "lat": centro_y,
+        "area": abs(area)
+    }
 
 
-def centro_geometria(geometria):
+def obtener_centro(geometry):
+    """
+    ArcGIS puede devolver:
 
-    tipo = geometria.get(
+    Polygon
+    o
+    MultiPolygon.
+
+    Si hay varias islas/polígonos,
+    utilizamos el polígono principal,
+    es decir, el de mayor superficie.
+    """
+
+    tipo = geometry.get(
         "type"
     )
 
-    coordenadas = geometria.get(
+    coordenadas = geometry.get(
         "coordinates",
         []
     )
 
     candidatos = []
+
+
+    # ----------------------------
+    # POLYGON
+    # ----------------------------
 
     if tipo == "Polygon":
 
@@ -511,8 +593,15 @@ def centro_geometria(geometria):
                 coordenadas[0]
             )
 
-            if resultado[0] is not None:
-                candidatos.append(resultado)
+            if resultado:
+                candidatos.append(
+                    resultado
+                )
+
+
+    # ----------------------------
+    # MULTIPOLYGON
+    # ----------------------------
 
     elif tipo == "MultiPolygon":
 
@@ -525,490 +614,272 @@ def centro_geometria(geometria):
                 poligono[0]
             )
 
-            if resultado[0] is not None:
-                candidatos.append(resultado)
+            if resultado:
+                candidatos.append(
+                    resultado
+                )
+
 
     if not candidatos:
         return None, None
 
-    # Usa la parte más grande del territorio
+
+    # Elegimos la masa terrestre principal.
     principal = max(
         candidatos,
-        key=lambda elemento: elemento[2]
+        key=lambda x: x["area"]
     )
+
 
     return (
-        principal[0],
-        principal[1]
+        principal["lon"],
+        principal["lat"]
     )
 
 
 # ============================================================
-# KPI GENERALES
+# 13. OBTENER CENTRO DE CADA TERRITORIO
 # ============================================================
-
-territorio_mayor = data.loc[
-    data["Hard No"].idxmax()
-]
-
-territorio_menor = data.loc[
-    data["Hard No"].idxmin()
-]
-
-promedio_territorial = data[
-    "Hard No"
-].mean()
-
-
-# ============================================================
-# KPI DASHBOARD
-# ============================================================
-
-k1, k2, k3, k4 = st.columns(
-    4,
-    gap="medium"
-)
-
-
-with k1:
-
-    mostrar_html(
-        f"""
-        <div class="kpi-card">
-
-            <div class="kpi-label">
-                Hard No Nacional
-            </div>
-
-            <p class="kpi-number">
-                {hard_no_nacional}%
-            </p>
-
-            <div class="kpi-unit">
-                resultado nacional ponderado
-            </div>
-
-        </div>
-        """
-    )
-
-
-with k2:
-
-    mostrar_html(
-        f"""
-        <div class="kpi-card">
-
-            <div class="kpi-label">
-                Mayor porcentaje
-            </div>
-
-            <p class="kpi-number">
-                {territorio_mayor["Hard No"]}%
-            </p>
-
-            <div class="kpi-unit">
-                {territorio_mayor["Territorio"]}
-            </div>
-
-        </div>
-        """
-    )
-
-
-with k3:
-
-    mostrar_html(
-        f"""
-        <div class="kpi-card">
-
-            <div class="kpi-label">
-                Menor porcentaje
-            </div>
-
-            <p class="kpi-number">
-                {territorio_menor["Hard No"]}%
-            </p>
-
-            <div class="kpi-unit">
-                {territorio_menor["Territorio"]}
-            </div>
-
-        </div>
-        """
-    )
-
-
-with k4:
-
-    mostrar_html(
-        f"""
-        <div class="kpi-card">
-
-            <div class="kpi-label">
-                Promedio territorial
-            </div>
-
-            <p class="kpi-number">
-                {promedio_territorial:.1f}%
-            </p>
-
-            <div class="kpi-unit">
-                promedio simple territorial
-            </div>
-
-        </div>
-        """
-    )
-
-
-st.markdown("")
-
-
-# ============================================================
-# CARGAR GEOJSON
-# ============================================================
-
-with open(
-    "TEST.geojson",
-    "r",
-    encoding="utf-8"
-) as archivo_geojson:
-
-    panama = json.load(
-        archivo_geojson
-    )
-
-
-# Corregir automáticamente la orientación
-panama = corregir_orientacion_geojson(
-    panama
-)
-
-
-# ============================================================
-# CREAR IDENTIFICADORES
-# ============================================================
-
-data["map_key"] = data[
-    "Territorio"
-].apply(normalizar)
-
 
 centros = []
 
 
-for feature in panama.get(
-    "features",
-    []
-):
+for feature in panama["features"]:
 
-    propiedades = feature.get(
-        "properties",
-        {}
-    )
-
-    nombre_geojson = propiedades.get(
-        "NOMBRE",
-        ""
-    )
-
-    map_key = normalizar(
-        nombre_geojson
-    )
-
-    # Identificador directo para Plotly
-    feature["id"] = map_key
-
-    propiedades[
+    clave = feature["properties"][
         "map_key"
-    ] = map_key
+    ]
 
-    centro_lon, centro_lat = centro_geometria(
-        feature.get(
-            "geometry",
-            {}
-        )
+    lon, lat = obtener_centro(
+        feature["geometry"]
     )
 
     centros.append({
-
-        "map_key": map_key,
-
-        "Centro Longitud": centro_lon,
-
-        "Centro Latitud": centro_lat
+        "map_key": clave,
+        "lon": lon,
+        "lat": lat
     })
 
 
-centros_df = pd.DataFrame(
+centros = pd.DataFrame(
     centros
 )
 
 
-# ============================================================
-# VERIFICAR COINCIDENCIAS
-# ============================================================
-
-claves_datos = set(
-    data["map_key"]
-)
-
-
-claves_geojson = {
-
-    feature["id"]
-
-    for feature in panama.get(
-        "features",
-        []
-    )
-}
-
-
-faltan_en_geojson = (
-    claves_datos
-    -
-    claves_geojson
-)
-
-
-if faltan_en_geojson:
-
-    st.error(
-        "No se encontraron en TEST.geojson: "
-        + ", ".join(
-            sorted(faltan_en_geojson)
-        )
-    )
-
-
-# ============================================================
-# CONSERVAR SOLO LOS TERRITORIOS CON DATOS
-# ============================================================
-
-panama["features"] = [
-
-    feature
-
-    for feature in panama.get(
-        "features",
-        []
-    )
-
-    if feature["id"]
-    in claves_datos
-]
-
-
-# ============================================================
-# UNIR CENTROS CON LOS DATOS
-# ============================================================
+# Agregamos longitud y latitud a nuestros datos.
 
 data = data.merge(
-    centros_df,
+    centros,
     on="map_key",
     how="left"
 )
 
 
 # ============================================================
-# AJUSTES VISUALES DE LOS LABELS
+# 14. CREAR EL MAPA
 # ============================================================
 
-ajustes_labels = {
-
-    "bocas del toro": {
-        "lon": 0.02,
-        "lat": 0.02
-    },
-
-    "ngabe bugle": {
-        "lon": 0.00,
-        "lat": 0.00
-    },
-
-    "chiriqui": {
-        "lon": -0.01,
-        "lat": -0.02
-    },
-
-    "veraguas": {
-        "lon": 0.00,
-        "lat": -0.03
-    },
-
-    "herrera": {
-        "lon": 0.00,
-        "lat": 0.02
-    },
-
-    "los santos": {
-        "lon": 0.03,
-        "lat": -0.03
-    },
-
-    "cocle": {
-        "lon": 0.00,
-        "lat": 0.00
-    },
-
-    "colon": {
-        "lon": 0.00,
-        "lat": 0.03
-    },
-
-    "panama oeste": {
-        "lon": -0.02,
-        "lat": -0.02
-    },
-
-    "panama": {
-        "lon": 0.08,
-        "lat": -0.02
-    },
-
-    "darien": {
-        "lon": 0.00,
-        "lat": 0.00
-    }
-}
+fig = go.Figure()
 
 
-for indice, fila in data.iterrows():
+# ============================================================
+# 15. CAPA BASE GRIS
+# ============================================================
 
-    ajuste = ajustes_labels.get(
-        fila["map_key"],
-        {
-            "lon": 0,
-            "lat": 0
-        }
+# PRIMERA CAPA:
+#
+# Pintamos TODOS los territorios de gris.
+#
+# Después colocaremos encima los territorios
+# que tienen Hard No.
+#
+# Por eso las comarcas sin datos permanecerán grises.
+
+todos_los_ids = [
+    feature["id"]
+    for feature in panama["features"]
+]
+
+
+fig.add_trace(
+
+    go.Choropleth(
+
+        geojson=panama,
+
+        locations=todos_los_ids,
+
+        featureidkey="id",
+
+        # Todos reciben el mismo valor.
+        z=[1] * len(
+            todos_los_ids
+        ),
+
+        # Un solo gris.
+        colorscale=[
+            [0, "#D9D9D9"],
+            [1, "#D9D9D9"]
+        ],
+
+        showscale=False,
+
+        marker_line_color="white",
+
+        marker_line_width=1.1,
+
+        hoverinfo="skip"
     )
-
-    if pd.notna(
-        fila["Centro Longitud"]
-    ):
-
-        data.loc[
-            indice,
-            "Centro Longitud"
-        ] += ajuste["lon"]
-
-    if pd.notna(
-        fila["Centro Latitud"]
-    ):
-
-        data.loc[
-            indice,
-            "Centro Latitud"
-        ] += ajuste["lat"]
+)
 
 
 # ============================================================
-# ETIQUETAS
+# 16. CAPA HARD NO
 # ============================================================
 
-data["Etiqueta"] = (
+# SEGUNDA CAPA:
+#
+# Solo colocamos encima las 10 provincias +
+# Ngäbe Buglé.
+#
+# Cuanto mayor el porcentaje,
+# más oscuro será el rojo.
+
+fig.add_trace(
+
+    go.Choropleth(
+
+        geojson=panama,
+
+        locations=data["map_key"],
+
+        featureidkey="id",
+
+        z=data["Hard No"],
+
+
+        # ESCALA CONTINUA
+        #
+        # NO HAY:
+        # Alto
+        # Medio
+        # Bajo
+        #
+        # Es simplemente de menor a mayor.
+
+        colorscale=[
+
+            [0.00, "#FCE8E6"],
+
+            [0.20, "#F9C5C1"],
+
+            [0.40, "#F28B82"],
+
+            [0.60, "#E85D55"],
+
+            [0.80, "#C9342F"],
+
+            [1.00, "#8B0D0D"]
+
+        ],
+
+
+        zmin=data["Hard No"].min(),
+
+        zmax=data["Hard No"].max(),
+
+
+        colorbar=dict(
+
+            title="Hard No (%)",
+
+            thickness=14,
+
+            len=0.60,
+
+            tickvals=[
+                data["Hard No"].min(),
+                hard_no_nacional,
+                data["Hard No"].max()
+            ],
+
+            ticktext=[
+                f'{data["Hard No"].min()}%',
+                f'{hard_no_nacional}%',
+                f'{data["Hard No"].max()}%'
+            ]
+        ),
+
+
+        customdata=data[
+            [
+                "Territorio",
+                "N Entrevistas",
+                "Base Ponderada"
+            ]
+        ],
+
+
+        hovertemplate=(
+
+            "<b>%{customdata[0]}</b>"
+
+            "<br>Hard No: %{z:.0f}%"
+
+            "<br>N entrevistas: %{customdata[1]}"
+
+            "<br>Base ponderada: %{customdata[2]:.2f}"
+
+            "<extra></extra>"
+        ),
+
+
+        marker_line_color="white",
+
+        marker_line_width=1.3
+    )
+)
+
+
+# ============================================================
+# 17. LABELS DE PROVINCIAS
+# ============================================================
+
+# Creamos el texto:
+
+data["Label"] = (
+
     "<b>"
     + data["Territorio"]
     + "</b>"
+
     + "<br>"
+
     + data["Hard No"].astype(str)
+
     + "%"
 )
 
 
-# ============================================================
-# MAPA CHOROPLETH
-# ============================================================
+fig.add_trace(
 
-fig_data = px.choropleth(
-
-    data,
-
-    geojson=panama,
-
-    locations="map_key",
-
-    featureidkey="id",
-
-    color="Hard No",
-
-    color_continuous_scale=[
-        [0.00, "#FCE1DF"],
-        [0.20, "#F7B7B2"],
-        [0.40, "#F08078"],
-        [0.60, "#DE4A43"],
-        [0.80, "#B92525"],
-        [1.00, "#850A0A"]
-    ],
-
-    range_color=(
-        data["Hard No"].min(),
-        data["Hard No"].max()
-    ),
-
-    custom_data=[
-        "Territorio",
-        "Hard No",
-        "N Entrevistas",
-        "Base Ponderada"
-    ]
-)
-
-
-# ============================================================
-# RESALTADO DETRÁS DEL TEXTO
-# ============================================================
-
-fig_data.add_trace(
     go.Scattergeo(
 
-        lon=data["Centro Longitud"],
+        lon=data["lon"],
 
-        lat=data["Centro Latitud"],
+        lat=data["lat"],
 
-        mode="markers",
-
-        marker={
-            "size": 39,
-            "color": "rgba(225, 225, 225, 0.63)",
-            "line": {
-                "color": "rgba(130, 130, 130, 0.15)",
-                "width": 0.3
-            },
-            "symbol": "circle"
-        },
-
-        hoverinfo="skip",
-
-        showlegend=False
-    )
-)
-
-
-# ============================================================
-# TEXTO CENTRADO
-# ============================================================
-
-fig_data.add_trace(
-    go.Scattergeo(
-
-        lon=data["Centro Longitud"],
-
-        lat=data["Centro Latitud"],
-
-        text=data["Etiqueta"],
+        text=data["Label"],
 
         mode="text",
 
         textposition="middle center",
 
-        textfont={
-            "size": 9,
-            "color": "#111111",
-            "family": "Arial"
-        },
+        textfont=dict(
+            size=10,
+            color="#222222",
+            family="Arial"
+        ),
 
         hoverinfo="skip",
 
@@ -1018,13 +889,15 @@ fig_data.add_trace(
 
 
 # ============================================================
-# CONFIGURACIÓN GEOGRÁFICA
+# 18. CONFIGURACIÓN GEOGRÁFICA
 # ============================================================
 
-fig_data.update_geos(
+fig.update_geos(
 
+    # Zoom automático usando las geometrías.
     fitbounds="locations",
 
+    # Quitamos mapa mundial, océanos, etc.
     visible=False,
 
     showcountries=False,
@@ -1038,160 +911,138 @@ fig_data.update_geos(
 
 
 # ============================================================
-# BORDES Y HOVER
+# 19. DISEÑO
 # ============================================================
 
-fig_data.update_traces(
+fig.update_layout(
 
-    selector={
-        "type": "choropleth"
-    },
+    height=610,
 
-    marker_line_color="white",
+    margin=dict(
+        l=0,
+        r=0,
+        t=10,
+        b=0
+    ),
 
-    marker_line_width=1.4,
-
-    hovertemplate=(
-        "<b>%{customdata[0]}</b>"
-        "<br>Hard No: %{customdata[1]:.0f}%"
-        "<br>N entrevistas: %{customdata[2]}"
-        "<br>Base ponderada: %{customdata[3]:.2f}"
-        "<extra></extra>"
-    )
+    paper_bgcolor="white"
 )
 
 
 # ============================================================
-# DISEÑO DEL MAPA
+# 20. MAPA + RANKING
 # ============================================================
 
-fig_data.update_layout(
-
-    height=600,
-
-    paper_bgcolor="white",
-
-    plot_bgcolor="white",
-
-    margin={
-        "r": 0,
-        "t": 10,
-        "l": 0,
-        "b": 0
-    },
-
-    coloraxis_colorbar={
-
-        "title": {
-            "text": "Hard No (%)"
-        },
-
-        "thickness": 15,
-
-        "len": 0.58,
-
-        "y": 0.70,
-
-        "x": 0.99,
-
-        "tickvals": [
-            data["Hard No"].min(),
-            hard_no_nacional,
-            data["Hard No"].max()
-        ],
-
-        "ticktext": [
-            f'{data["Hard No"].min()}%',
-            f'{hard_no_nacional}%',
-            f'{data["Hard No"].max()}%'
-        ]
-    }
+col_mapa, col_ranking = st.columns(
+    [2.2, 1]
 )
 
 
-# ============================================================
-# MAPA Y RANKING
-# ============================================================
+# ----------------------------
+# MAPA
+# ----------------------------
 
-map_col, rank_col = st.columns(
-    [2.15, 1],
-    gap="medium"
-)
+with col_mapa:
 
-
-with map_col:
-
-    mostrar_html(
-        """
-        <h3 class="section-title">
-            Hard No por territorio
-        </h3>
-        """
+    st.subheader(
+        "Hard No por territorio"
     )
 
     st.plotly_chart(
-        fig_data,
+        fig,
         use_container_width=True,
         config={
             "displayModeBar": False
         }
     )
 
-    mostrar_html(
-        """
-        <p class="info-caption">
-
-            El porcentaje representa la proporción de personas
-            clasificadas como Hard No en cada provincia o comarca.
-            Los tonos más oscuros indican una mayor incidencia
-            territorial de Hard No.
-
-        </p>
-        """
+    st.caption(
+        "Los tonos más oscuros representan una mayor "
+        "incidencia de Hard No. Las comarcas sin información "
+        "se muestran en gris."
     )
 
 
-with rank_col:
+# ----------------------------
+# RANKING
+# ----------------------------
 
-    mostrar_html(
-        """
-        <h3 class="section-title">
-            Ranking Territorial
-        </h3>
-        """
+with col_ranking:
+
+    st.subheader(
+        "Ranking Territorial"
     )
 
-    ranking = data.sort_values(
-        "Hard No",
-        ascending=False
-    ).copy()
+    ranking = (
+        data[
+            [
+                "Territorio",
+                "Hard No",
+                "N Entrevistas"
+            ]
+        ]
+        .sort_values(
+            "Hard No",
+            ascending=False
+        )
+        .reset_index(
+            drop=True
+        )
+    )
 
+
+    # Creamos una columna visual con %.
     ranking["Hard No"] = (
         ranking["Hard No"]
         .astype(str)
         + "%"
     )
 
-    ranking_html = ranking[
-        [
-            "Territorio",
-            "Hard No",
-            "N Entrevistas"
-        ]
-    ].to_html(
-        escape=False,
-        index=False,
-        col_space={
-            "Territorio": "50%",
-            "Hard No": "20%",
-            "N Entrevistas": "30%"
+
+    st.dataframe(
+
+        ranking,
+
+        hide_index=True,
+
+        use_container_width=True,
+
+        column_config={
+
+            "Territorio":
+                st.column_config.TextColumn(
+                    "Territorio"
+                ),
+
+            "Hard No":
+                st.column_config.TextColumn(
+                    "Hard No"
+                ),
+
+            "N Entrevistas":
+                st.column_config.NumberColumn(
+                    "N Entrevistas",
+                    format="%d"
+                )
         }
     )
 
-    mostrar_html(
-        f"""
-        <div class="container-box">
-            {ranking_html}
-        </div>
-        """
+
+# ============================================================
+# 21. INFORMACIÓN OPCIONAL PARA APRENDER / DEBUG
+# ============================================================
+
+# Este expander te permite ver qué está llegando de ArcGIS.
+#
+# Lo puedes dejar mientras desarrollamos la aplicación
+# y eliminarlo cuando terminemos.
+
+with st.expander(
+    "Ver territorios recibidos desde ArcGIS"
+):
+
+    st.dataframe(
+        territorios_arcgis,
+        hide_index=True,
+        use_container_width=True
     )
